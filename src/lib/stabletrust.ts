@@ -13,8 +13,8 @@ import { ConfidentialTransferClient } from "@fairblock/stabletrust";
 
 const STABLETRUST_ADDRESSES: Record<number, string> = {
   84532: "0x73D2bc5B5c7aF5C3726E7bEf0BD8b4931923fdA9", // Base testnet
-  1244: "0x1Bf79BF5A32D6f3cdce3fe1A93c3fB222Bc93bb3", // Arc legacy chain id
-  5042002: "0x1Bf79BF5A32D6f3cdce3fe1A93c3fB222Bc93bb3", // Arc testnet app chain id
+  1244: "0xf085e801a6FD9d03b09566a738734B7e2Bb065De", // Arc legacy chain id
+  5042002: "0xf085e801a6FD9d03b09566a738734B7e2Bb065De", // Arc testnet app chain id
 };
 
 const STABLETRUST_RPCS: Record<number, string> = {
@@ -42,7 +42,8 @@ export type ConfidentialStatus =
   | "depositing"
   | "transferring"
   | "withdrawing"
-  | "finalizing";
+  | "finalizing"
+  | "retrying";
 
 type StatusHandler = (status: ConfidentialStatus) => void;
 
@@ -107,6 +108,74 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   }) as Promise<T>;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isTransientConfidentialError(error: unknown): boolean {
+  const msg =
+    error instanceof Error
+      ? error.message.toLowerCase()
+      : String(error).toLowerCase();
+  return (
+    msg.includes("missing revert data") ||
+    msg.includes("estimate gas") ||
+    msg.includes("estimategas") ||
+    msg.includes("call_exception") ||
+    msg.includes("network") ||
+    msg.includes("timeout") ||
+    msg.includes("temporarily")
+  );
+}
+
+async function withRetry<T>(params: {
+  action: () => Promise<T>;
+  label: string;
+  onStatus?: StatusHandler;
+  retries?: number;
+  onRetry?: (context: {
+    nextAttempt: number;
+    maxAttempts: number;
+    error: unknown;
+  }) => Promise<void> | void;
+}): Promise<T> {
+  const retries = params.retries ?? 2;
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await params.action();
+    } catch (error) {
+      lastError = error;
+      const canRetry = attempt < retries && isTransientConfidentialError(error);
+      if (!canRetry) break;
+      params.onStatus?.("retrying");
+      await params.onRetry?.({
+        nextAttempt: attempt + 2,
+        maxAttempts: retries + 1,
+        error,
+      });
+      const delayMs = 1000 * Math.pow(2, attempt);
+      await sleep(delayMs);
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`${params.label} failed.`);
+}
+
+async function applyPendingIfAvailable(
+  client: ConfidentialTransferClient,
+  signer: ethers.Signer
+): Promise<void> {
+  const maybeClient = client as unknown as {
+    applyPending?: (wallet: ethers.Signer) => Promise<unknown>;
+  };
+  if (!maybeClient.applyPending) return;
+  await maybeClient.applyPending(signer);
+}
+
 export function hasStoredConfidentialKeys(chainId: number, address: string): boolean {
   return !!getStoredKeys(chainId, address);
 }
@@ -127,14 +196,20 @@ export async function ensureConfidentialAccount(
   const client = getClient(chainId);
   onStatus?.("awaiting_signature");
   onStatus?.("creating_account");
-  const keys = (await withTimeout(
-    client.ensureAccount(signer, {
-      waitForFinalization: true,
-      maxAttempts: 30,
-    }),
-    120000,
-    "Account initialization"
-  )) as ConfidentialKeys;
+  const keys = (await withRetry({
+    label: "Account initialization",
+    onStatus,
+    retries: 1,
+    action: () =>
+      withTimeout(
+        client.ensureAccount(signer, {
+          waitForFinalization: true,
+          maxAttempts: 30,
+        }),
+        120000,
+        "Account initialization"
+      ),
+  })) as ConfidentialKeys;
   setStoredKeys(chainId, address, keys);
   return keys;
 }
@@ -170,21 +245,35 @@ export async function performConfidentialPayment(
 
   // Deposit public USDC into confidential balance then transfer privately.
   onStatus?.("depositing");
-  await withTimeout(
-    client.confidentialDeposit(signer, tokenAddress, amountX100, {
-      waitForFinalization: true,
-    }),
-    180000,
-    "Confidential deposit"
-  );
+  await withRetry({
+    label: "Confidential deposit",
+    onStatus,
+    retries: 2,
+    action: () =>
+      withTimeout(
+        client.confidentialDeposit(signer, tokenAddress, amountX100, {
+          waitForFinalization: true,
+        }),
+        180000,
+        "Confidential deposit"
+      ),
+  });
   onStatus?.("transferring");
-  await withTimeout(
-    client.confidentialTransfer(signer, recipient, tokenAddress, amountX100, {
-      waitForFinalization: true,
-    }),
-    180000,
-    "Confidential transfer"
-  );
+  await withRetry({
+    label: "Confidential transfer",
+    onStatus,
+    retries: 2,
+    onRetry: () =>
+      withTimeout(applyPendingIfAvailable(client, signer), 90000, "Apply pending"),
+    action: () =>
+      withTimeout(
+        client.confidentialTransfer(signer, recipient, tokenAddress, amountX100, {
+          waitForFinalization: true,
+        }),
+        180000,
+        "Confidential transfer"
+      ),
+  });
 }
 
 export async function getConfidentialBalanceSummary(
@@ -226,13 +315,21 @@ export async function withdrawConfidentialToUsdc(
   }
   const amountX100 = usdcDisplayToX100(displayAmount);
   onStatus?.("withdrawing");
-  await withTimeout(
-    client.withdraw(signer, tokenAddress, amountX100, {
-      waitForFinalization: true,
-    }),
-    180000,
-    "Confidential withdraw"
-  );
+  await withRetry({
+    label: "Confidential withdraw",
+    onStatus,
+    retries: 2,
+    onRetry: () =>
+      withTimeout(applyPendingIfAvailable(client, signer), 90000, "Apply pending"),
+    action: () =>
+      withTimeout(
+        client.withdraw(signer, tokenAddress, amountX100, {
+          waitForFinalization: true,
+        }),
+        180000,
+        "Confidential withdraw"
+      ),
+  });
 }
 
 export { STABLETRUST_ADDRESSES };

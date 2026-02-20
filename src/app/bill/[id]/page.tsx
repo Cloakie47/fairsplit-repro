@@ -146,6 +146,7 @@ export default function BillDetailPage() {
             depositing: "Depositing to confidential balance...",
             transferring: "Submitting confidential transfer...",
             finalizing: "Waiting for finalization...",
+            retrying: "Arc testnet is temporarily busy, retrying...",
           };
           setPaymentStatus(labels[next] ?? "Processing confidential payment...");
         }

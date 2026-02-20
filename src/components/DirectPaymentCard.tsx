@@ -65,6 +65,7 @@ export function DirectPaymentCard() {
               depositing: "Depositing to confidential balance...",
               transferring: "Submitting confidential transfer...",
               finalizing: "Waiting for finalization...",
+              retrying: "Arc testnet is temporarily busy, retrying...",
             };
             setStage(labels[next] ?? "Processing confidential transfer...");
           }
