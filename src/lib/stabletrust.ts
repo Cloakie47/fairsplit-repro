@@ -1,5 +1,6 @@
 import { ethers } from "ethers";
 import { ConfidentialTransferClient } from "@fairblock/stabletrust";
+import { getUsdcContract } from "@/lib/usdc";
 /**
  * Fairblock StableTrust — PLACEHOLDER for confidential payments.
  * See docs/CONFIDENTIALITY.md and https://www.npmjs.com/package/@fairblock/stabletrust
@@ -47,7 +48,17 @@ export type ConfidentialStatus =
 
 type StatusHandler = (status: ConfidentialStatus) => void;
 
+function keysScope(chainId: number): string {
+  const contract = STABLETRUST_ADDRESSES[chainId];
+  if (!contract) return `${chainId}_unknown`;
+  return `${chainId}_${contract.toLowerCase()}`;
+}
+
 function keysStorageKey(chainId: number, address: string) {
+  return `fairysplit_stabletrust_keys_${keysScope(chainId)}_${address.toLowerCase()}`;
+}
+
+function legacyKeysStorageKey(chainId: number, address: string) {
   return `fairysplit_stabletrust_keys_${chainId}_${address.toLowerCase()}`;
 }
 
@@ -64,6 +75,8 @@ function getStoredKeys(chainId: number, address: string): ConfidentialKeys | nul
 function setStoredKeys(chainId: number, address: string, keys: ConfidentialKeys) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(keysStorageKey(chainId, address), JSON.stringify(keys));
+  // Clean up legacy key shape so we don't accidentally use stale state later.
+  window.localStorage.removeItem(legacyKeysStorageKey(chainId, address));
 }
 
 function getClient(chainId: number): ConfidentialTransferClient {
@@ -98,6 +111,14 @@ function usdcDisplayToX100(displayAmount: string): number {
   return asNum;
 }
 
+function x100ToUsdcDisplay(amountX100: number): string {
+  return (amountX100 / 100).toFixed(2);
+}
+
+function x100ToUsdcRaw(amountX100: number): bigint {
+  return BigInt(amountX100) * BigInt(10000); // x100 -> 6 decimals
+}
+
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | null = null;
   const timeout = new Promise<never>((_, reject) => {
@@ -126,6 +147,33 @@ function isTransientConfidentialError(error: unknown): boolean {
     msg.includes("timeout") ||
     msg.includes("temporarily")
   );
+}
+
+function normalizeConfidentialError(error: unknown): Error {
+  const raw = error instanceof Error ? error.message : String(error);
+  const msg = raw.toLowerCase();
+
+  if (msg.includes("has not been authorized yet")) {
+    return new Error(
+      "Wallet extension has not authorized localhost. Open the wallet extension, authorize http://localhost:3000, then retry."
+    );
+  }
+
+  if (msg.includes("hydration failed")) {
+    return new Error("App UI hydration failed. Refresh the page and retry the transaction.");
+  }
+
+  if (msg.includes("user rejected")) {
+    return new Error("Transaction was rejected in wallet.");
+  }
+
+  if (msg.includes("insufficient allowance")) {
+    return new Error(
+      "USDC approval is missing or too low for confidential deposit. Approve USDC and retry."
+    );
+  }
+
+  return error instanceof Error ? error : new Error(raw);
 }
 
 async function withRetry<T>(params: {
@@ -160,24 +208,60 @@ async function withRetry<T>(params: {
     }
   }
 
-  throw lastError instanceof Error
-    ? lastError
-    : new Error(`${params.label} failed.`);
+  throw normalizeConfidentialError(
+    lastError instanceof Error ? lastError : new Error(`${params.label} failed.`)
+  );
 }
 
-async function applyPendingIfAvailable(
+async function waitForAccountReady(
   client: ConfidentialTransferClient,
-  signer: ethers.Signer
-): Promise<void> {
-  const maybeClient = client as unknown as {
-    applyPending?: (wallet: ethers.Signer) => Promise<unknown>;
-  };
-  if (!maybeClient.applyPending) return;
-  await maybeClient.applyPending(signer);
+  address: string,
+  onStatus?: StatusHandler
+): Promise<boolean> {
+  onStatus?.("finalizing");
+  const attempts = 30;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const info = await withTimeout(client.getAccountInfo(address), 30000, "Account readiness");
+      if (info?.exists) return true;
+    } catch {
+      // Best-effort readiness polling only.
+    }
+    await sleep(2000);
+  }
+  return false;
 }
 
 export function hasStoredConfidentialKeys(chainId: number, address: string): boolean {
   return !!getStoredKeys(chainId, address);
+}
+
+async function ensureStableTrustAllowance(
+  signer: ethers.Signer,
+  tokenAddress: string,
+  chainId: number,
+  requiredX100: number,
+  onStatus?: StatusHandler
+): Promise<void> {
+  const spender = STABLETRUST_ADDRESSES[chainId];
+  if (!spender) {
+    throw new Error("Confidential transfer is not configured for this chain.");
+  }
+  const owner = await signer.getAddress();
+  const usdc = getUsdcContract(tokenAddress, signer);
+  const requiredRaw = x100ToUsdcRaw(requiredX100);
+  const allowance = (await usdc.allowance(owner, spender)) as bigint;
+  if (allowance >= requiredRaw) return;
+
+  onStatus?.("awaiting_signature");
+  const maxApproval = ethers.MaxUint256;
+  const approveTx = await withTimeout(
+    usdc.approve(spender, maxApproval),
+    120000,
+    "USDC approval"
+  );
+  onStatus?.("finalizing");
+  await withTimeout(approveTx.wait(), 180000, "USDC approval confirmation");
 }
 
 export async function getSignerAddress(signer: ethers.Signer): Promise<string> {
@@ -199,11 +283,11 @@ export async function ensureConfidentialAccount(
   const keys = (await withRetry({
     label: "Account initialization",
     onStatus,
-    retries: 1,
+    retries: 0,
     action: () =>
       withTimeout(
         client.ensureAccount(signer, {
-          waitForFinalization: true,
+          waitForFinalization: false,
           maxAttempts: 30,
         }),
         120000,
@@ -211,6 +295,9 @@ export async function ensureConfidentialAccount(
       ),
   })) as ConfidentialKeys;
   setStoredKeys(chainId, address, keys);
+  // Base testnet may finalize/index slower than the SDK polling window.
+  // Persist keys immediately and treat readiness as best-effort.
+  await waitForAccountReady(client, address, onStatus);
   return keys;
 }
 
@@ -243,28 +330,35 @@ export async function performConfidentialPayment(
 
   const amountX100 = usdcRawToX100(amountRaw);
 
-  // Deposit public USDC into confidential balance then transfer privately.
-  onStatus?.("depositing");
-  await withRetry({
-    label: "Confidential deposit",
+  onStatus?.("reading_balance");
+  const senderAddress = (await signer.getAddress()).toLowerCase();
+  const senderBalance = await withRetry({
+    label: "Confidential balance read",
     onStatus,
-    retries: 2,
+    retries: 1,
     action: () =>
       withTimeout(
-        client.confidentialDeposit(signer, tokenAddress, amountX100, {
-          waitForFinalization: true,
-        }),
-        180000,
-        "Confidential deposit"
+        client.getConfidentialBalance(senderAddress, senderKeys.privateKey, tokenAddress),
+        60000,
+        "Balance refresh"
       ),
   });
+
+  // Use available cUSDC first; only deposit missing amount from public USDC if needed.
+  const availableX100 = senderBalance.available.amount;
+  const shortfallX100 = Math.max(0, amountX100 - availableX100);
+  if (shortfallX100 > 0) {
+    throw new Error(
+      `Insufficient cUSDC for confidential payment. Need ${x100ToUsdcDisplay(
+        shortfallX100
+      )} more cUSDC. Open Confidential Wallet and convert USDC to cUSDC first.`
+    );
+  }
   onStatus?.("transferring");
   await withRetry({
     label: "Confidential transfer",
     onStatus,
-    retries: 2,
-    onRetry: () =>
-      withTimeout(applyPendingIfAvailable(client, signer), 90000, "Apply pending"),
+    retries: 0,
     action: () =>
       withTimeout(
         client.confidentialTransfer(signer, recipient, tokenAddress, amountX100, {
@@ -272,6 +366,34 @@ export async function performConfidentialPayment(
         }),
         180000,
         "Confidential transfer"
+      ),
+  });
+}
+
+export async function depositUsdcToConfidential(
+  signer: ethers.Signer,
+  tokenAddress: string,
+  displayAmount: string,
+  chainId: number,
+  onStatus?: StatusHandler
+): Promise<void> {
+  const client = getClient(chainId);
+  await ensureConfidentialAccount(signer, chainId, onStatus);
+  const amountX100 = usdcDisplayToX100(displayAmount);
+  await ensureStableTrustAllowance(signer, tokenAddress, chainId, amountX100, onStatus);
+
+  onStatus?.("depositing");
+  await withRetry({
+    label: "Confidential top up",
+    onStatus,
+    retries: 0,
+    action: () =>
+      withTimeout(
+        client.confidentialDeposit(signer, tokenAddress, amountX100, {
+          waitForFinalization: true,
+        }),
+        180000,
+        "Confidential top up"
       ),
   });
 }
@@ -318,9 +440,7 @@ export async function withdrawConfidentialToUsdc(
   await withRetry({
     label: "Confidential withdraw",
     onStatus,
-    retries: 2,
-    onRetry: () =>
-      withTimeout(applyPendingIfAvailable(client, signer), 90000, "Apply pending"),
+    retries: 0,
     action: () =>
       withTimeout(
         client.withdraw(signer, tokenAddress, amountX100, {

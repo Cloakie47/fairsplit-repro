@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAccount, useChainId, useWalletClient } from "wagmi";
 import { ethers } from "ethers";
 import { useChainTheme, CHAIN_ACCENT } from "@/lib/theme";
-import { SUPPORTED_CHAINS, USDC_ADDRESSES } from "@/lib/chains";
+import { USDC_ADDRESSES } from "@/lib/chains";
 import { transferUsdc } from "@/lib/usdc";
 import { performConfidentialPayment } from "@/lib/stabletrust";
 import { logActivity } from "@/lib/activity";
@@ -47,9 +47,6 @@ export function DirectPaymentCard() {
         );
         setMessage("Direct payment sent.");
       } else {
-        if (chainId !== SUPPORTED_CHAINS.arcTestnet.id) {
-          throw new Error("Confidential direct payment is currently enabled on Arc testnet.");
-        }
         setStage("Preparing confidential transfer...");
         await performConfidentialPayment(
           signer,
@@ -65,7 +62,7 @@ export function DirectPaymentCard() {
               depositing: "Depositing to confidential balance...",
               transferring: "Submitting confidential transfer...",
               finalizing: "Waiting for finalization...",
-              retrying: "Arc testnet is temporarily busy, retrying...",
+              retrying: "Network is temporarily busy, retrying...",
             };
             setStage(labels[next] ?? "Processing confidential transfer...");
           }
@@ -89,7 +86,7 @@ export function DirectPaymentCard() {
     <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
       <h3 className="text-lg font-semibold text-stone-900">Direct payment</h3>
       <p className="mt-1 text-sm text-stone-600">
-        Send USDC directly. Confidential mode is enabled on Arc testnet.
+        Send USDC directly. Confidential mode spends cUSDC; top up cUSDC in Confidential Wallet first.
       </p>
 
       <div className="mt-4 space-y-4">

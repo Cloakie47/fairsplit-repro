@@ -6,6 +6,7 @@ import Link from "next/link";
 import { LayoutShell } from "@/components/LayoutShell";
 import { USDC_ADDRESSES, SUPPORTED_CHAINS } from "@/lib/chains";
 import {
+  depositUsdcToConfidential,
   ensureConfidentialAccount,
   getSignerAddress,
   getConfidentialBalanceSummary,
@@ -22,6 +23,7 @@ export default function ConfidentialPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [stage, setStage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [depositAmount, setDepositAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [balance, setBalance] = useState<{
     total: number;
@@ -29,8 +31,9 @@ export default function ConfidentialPage() {
     pending: number;
   } | null>(null);
 
-  const isArc = chainId === SUPPORTED_CHAINS.arcTestnet.id;
-  const canUseConfidential = !!isConnected && !!walletClient && !!chainId && isArc;
+  const isSupportedChain =
+    chainId === SUPPORTED_CHAINS.arcTestnet.id || chainId === SUPPORTED_CHAINS.baseSepolia.id;
+  const canUseConfidential = !!isConnected && !!walletClient && !!chainId && isSupportedChain;
   const availableAmount = balance?.available ?? 0;
   const withdrawAsNumber = Number(withdrawAmount || "0");
   const withdrawDisabled =
@@ -39,6 +42,23 @@ export default function ConfidentialPage() {
     !Number.isFinite(withdrawAsNumber) ||
     withdrawAsNumber <= 0 ||
     withdrawAsNumber > availableAmount;
+  const depositAsNumber = Number(depositAmount || "0");
+  const depositDisabled =
+    !canUseConfidential ||
+    loading ||
+    !Number.isFinite(depositAsNumber) ||
+    depositAsNumber <= 0;
+
+  const statusLabels: Record<string, string> = {
+    awaiting_signature: "Waiting for wallet signature...",
+    creating_account: "Creating confidential account...",
+    reading_balance: "Refreshing confidential balance...",
+    depositing: "Converting USDC to cUSDC...",
+    withdrawing: "Converting cUSDC to USDC...",
+    transferring: "Submitting confidential transfer...",
+    finalizing: "Waiting for finalization...",
+    retrying: "Network is temporarily busy, retrying...",
+  };
 
   const setupAccount = async () => {
     if (!walletClient || !chainId) return;
@@ -48,12 +68,7 @@ export default function ConfidentialPage() {
     try {
       const signer = await walletClientToSigner(walletClient);
       await ensureConfidentialAccount(signer, chainId, (next) => {
-        const labels: Record<string, string> = {
-          awaiting_signature: "Waiting for wallet signature...",
-          creating_account: "Creating confidential account...",
-          finalizing: "Waiting for finalization...",
-        };
-        setStage(labels[next] ?? "Initializing account...");
+        setStage(statusLabels[next] ?? "Initializing account...");
       });
       logActivity(
         "confidential_account_initialized",
@@ -110,8 +125,8 @@ export default function ConfidentialPage() {
         throw new Error("Withdraw amount is greater than available confidential balance.");
       }
       const signer = await walletClientToSigner(walletClient);
-      await withdrawConfidentialToUsdc(signer, usdc, withdrawAmount, chainId, () => {
-        setStage("Submitting withdraw transaction...");
+      await withdrawConfidentialToUsdc(signer, usdc, withdrawAmount, chainId, (next) => {
+        setStage(statusLabels[next] ?? "Submitting withdraw transaction...");
       });
       logActivity(
         "confidential_withdraw_completed",
@@ -123,6 +138,29 @@ export default function ConfidentialPage() {
       await refreshBalance();
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Withdraw failed.");
+    } finally {
+      setStage(null);
+      setLoading(false);
+    }
+  };
+
+  const topUpConfidential = async () => {
+    if (!walletClient || !chainId) return;
+    setLoading(true);
+    setStatus(null);
+    setStage(null);
+    try {
+      const usdc = USDC_ADDRESSES[chainId];
+      if (!usdc) throw new Error("Unsupported chain.");
+      const signer = await walletClientToSigner(walletClient);
+      await depositUsdcToConfidential(signer, usdc, depositAmount, chainId, (next) => {
+        setStage(statusLabels[next] ?? "Converting USDC to cUSDC...");
+      });
+      setStatus("USDC converted to cUSDC.");
+      setDepositAmount("");
+      await refreshBalance();
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "Conversion failed.");
     } finally {
       setStage(null);
       setLoading(false);
@@ -146,12 +184,12 @@ export default function ConfidentialPage() {
       <div className="space-y-5">
         <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
           <p className="text-sm text-stone-600">
-            Use this page to initialize your confidential account, view confidential balances,
-            and withdraw to public USDC.
+            Use this page to initialize your confidential account, convert USDC to cUSDC,
+            view confidential balances, and convert cUSDC back to USDC.
           </p>
-          {!isArc && (
+          {!isSupportedChain && (
             <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              Confidential flow is currently enabled for Arc testnet.
+              Confidential flow is enabled on Base Sepolia and Arc testnet.
             </p>
           )}
         </div>
@@ -178,28 +216,50 @@ export default function ConfidentialPage() {
             <div className="rounded-2xl border border-stone-200 bg-white p-4">
               <p className="text-xs text-stone-500">Total</p>
               <p className="text-xl font-semibold text-stone-900">
-                {balance ? balance.total.toFixed(2) : "--"} USDC
+                {balance ? balance.total.toFixed(2) : "--"} cUSDC
               </p>
             </div>
             <div className="rounded-2xl border border-stone-200 bg-white p-4">
-              <p className="text-xs text-stone-500">Available</p>
+              <p className="text-xs text-stone-500">Available cUSDC</p>
               <p className="text-xl font-semibold text-stone-900">
-                {balance ? balance.available.toFixed(2) : "--"} USDC
+                {balance ? balance.available.toFixed(2) : "--"} cUSDC
               </p>
             </div>
             <div className="rounded-2xl border border-stone-200 bg-white p-4">
-              <p className="text-xs text-stone-500">Pending</p>
+              <p className="text-xs text-stone-500">Pending cUSDC</p>
               <p className="text-xl font-semibold text-stone-900">
-                {balance ? balance.pending.toFixed(2) : "--"} USDC
+                {balance ? balance.pending.toFixed(2) : "--"} cUSDC
               </p>
             </div>
           </div>
         </div>
 
         <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
-          <h2 className="text-lg font-semibold text-stone-900">Withdraw to public USDC</h2>
+          <h2 className="text-lg font-semibold text-stone-900">Convert USDC to cUSDC</h2>
           <p className="mt-1 text-sm text-stone-600">
-            Moves confidential available balance into your normal Arc USDC wallet balance.
+            Tops up your confidential balance from your public wallet balance.
+          </p>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <input
+              value={depositAmount}
+              onChange={(e) => setDepositAmount(e.target.value)}
+              placeholder="10.00"
+              className="w-full rounded-2xl border border-stone-200 px-4 py-3 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-orange-300"
+            />
+            <button
+              onClick={topUpConfidential}
+              disabled={depositDisabled}
+              className="rounded-2xl bg-black px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-zinc-800 disabled:opacity-50"
+            >
+              Convert to cUSDC
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
+          <h2 className="text-lg font-semibold text-stone-900">Convert cUSDC to USDC</h2>
+          <p className="mt-1 text-sm text-stone-600">
+            Moves confidential available balance into your normal wallet USDC balance.
           </p>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row">
             <input
@@ -217,7 +277,7 @@ export default function ConfidentialPage() {
             </button>
           </div>
           <p className="mt-2 text-xs text-stone-500">
-            Withdraw is enabled only when account is initialized and amount is within available balance.
+            This conversion is enabled only when account is initialized and amount is within available cUSDC.
           </p>
         </div>
 

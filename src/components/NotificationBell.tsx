@@ -61,6 +61,8 @@ export function NotificationBell() {
     [address, tick]
   );
 
+  // Avoid SSR/CSR wallet-state mismatch on initial hydration.
+  if (!mounted) return null;
   if (!isConnected || !address) return null;
 
   const handleReadAll = () => {

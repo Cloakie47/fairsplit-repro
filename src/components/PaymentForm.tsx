@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useChainId } from "wagmi";
 import { useChainTheme, CHAIN_ACCENT } from "@/lib/theme";
-import { SUPPORTED_CHAINS } from "@/lib/chains";
 
 type PaymentFormProps = {
   billId: string;
@@ -94,9 +93,15 @@ export function PaymentForm({
       {mode === "normal" && (
         <p className="mt-2 text-sm text-stone-600">{amountFormatted}</p>
       )}
-      {mode === "confidential" && chainId !== SUPPORTED_CHAINS.arcTestnet.id && (
+      {mode === "confidential" && (
+        <p className="mt-2 text-sm text-stone-600">
+          Confidential payment uses your cUSDC balance. If needed, top up cUSDC in
+          Confidential Wallet first.
+        </p>
+      )}
+      {mode === "confidential" && !chainId && (
         <p className="mt-2 text-sm text-amber-700">
-          Confidential mode is currently available on Arc testnet.
+          Connect your wallet to use confidential mode.
         </p>
       )}
       {error && (

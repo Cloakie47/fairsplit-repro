@@ -9,7 +9,7 @@ import { LayoutShell } from "@/components/LayoutShell";
 import { ParticipantList } from "@/components/ParticipantList";
 import { PaymentForm } from "@/components/PaymentForm";
 import { getContract } from "@/lib/contract";
-import { CONTRACT_ADDRESSES, SUPPORTED_CHAINS } from "@/lib/chains";
+import { CONTRACT_ADDRESSES } from "@/lib/chains";
 import { approveUsdc } from "@/lib/usdc";
 import { performConfidentialPayment } from "@/lib/stabletrust";
 import { logActivity } from "@/lib/activity";
@@ -126,9 +126,6 @@ export default function BillDetailPage() {
   const payConfidential = async () => {
     if (!walletClient || !bill || !chainId || !address) return;
     try {
-      if (chainId !== SUPPORTED_CHAINS.arcTestnet.id) {
-        throw new Error("Confidential split payment is currently enabled on Arc testnet.");
-      }
       const signer = await walletClientToSigner(walletClient);
       const contract = getContract(signer, chainId);
 
@@ -146,7 +143,7 @@ export default function BillDetailPage() {
             depositing: "Depositing to confidential balance...",
             transferring: "Submitting confidential transfer...",
             finalizing: "Waiting for finalization...",
-            retrying: "Arc testnet is temporarily busy, retrying...",
+            retrying: "Network is temporarily busy, retrying...",
           };
           setPaymentStatus(labels[next] ?? "Processing confidential payment...");
         }
