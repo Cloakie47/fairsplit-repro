@@ -1,0 +1,38 @@
+{
+  "name": "fairysplit",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "compile": "hardhat compile",
+    "deploy:base": "hardhat run scripts/deploy.js --network baseSepolia",
+    "deploy:arc": "hardhat run scripts/deploy.js --network arcTestnet"
+  },
+  "dependencies": {
+    "@fairblock/stabletrust": "^1.0.9",
+    "@tanstack/react-query": "^5.60.0",
+    "dotenv": "^17.3.1",
+    "ethers": "^6.16.0",
+    "next": "^14.2.35",
+    "nodemailer": "^8.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "viem": "^2.21.0",
+    "wagmi": "^2.12.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@types/node": "^22.9.0",
+    "@types/nodemailer": "^7.0.10",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "autoprefixer": "^10.4.20",
+    "hardhat": "^2.22.0",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "typescript": "^5.6.3"
+  }
+}

@@ -1,0 +1,145 @@
+"use client";
+
+import { useState } from "react";
+import { useAccount, useChainId, useWalletClient } from "wagmi";
+import { ethers } from "ethers";
+import { useChainTheme, CHAIN_ACCENT } from "@/lib/theme";
+import { SUPPORTED_CHAINS, USDC_ADDRESSES } from "@/lib/chains";
+import { transferUsdc } from "@/lib/usdc";
+import { performConfidentialPayment } from "@/lib/stabletrust";
+import { logActivity } from "@/lib/activity";
+import { walletClientToSigner } from "@/lib/wallet";
+
+export function DirectPaymentCard() {
+  const { isConnected } = useAccount();
+  const { data: walletClient } = useWalletClient();
+  const chainId = useChainId();
+  const theme = useChainTheme();
+  const accent = CHAIN_ACCENT[theme];
+  const [recipient, setRecipient] = useState("");
+  const [amount, setAmount] = useState("");
+  const [mode, setMode] = useState<"normal" | "confidential">("normal");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [stage, setStage] = useState<string | null>(null);
+
+  const onPay = async () => {
+    if (!isConnected || !chainId || !walletClient) return;
+    setLoading(true);
+    setMessage(null);
+    setStage(null);
+    try {
+      const usdc = USDC_ADDRESSES[chainId];
+      if (!usdc) throw new Error("Unsupported chain. Switch to Base or Arc.");
+      if (!ethers.isAddress(recipient)) throw new Error("Recipient address is invalid.");
+      const amountRaw = ethers.parseUnits(amount || "0", 6);
+      if (amountRaw <= BigInt(0)) throw new Error("Enter a valid amount.");
+
+      const signer = await walletClientToSigner(walletClient);
+
+      if (mode === "normal") {
+        setStage("Sending normal payment...");
+        await transferUsdc(usdc, recipient, amountRaw, signer);
+        logActivity(
+          "direct_paid_normal",
+          "Direct payment sent",
+          `${ethers.formatUnits(amountRaw, 6)} USDC to ${recipient}`
+        );
+        setMessage("Direct payment sent.");
+      } else {
+        if (chainId !== SUPPORTED_CHAINS.arcTestnet.id) {
+          throw new Error("Confidential direct payment is currently enabled on Arc testnet.");
+        }
+        setStage("Preparing confidential transfer...");
+        await performConfidentialPayment(
+          signer,
+          recipient,
+          usdc,
+          amountRaw,
+          chainId,
+          (next) => {
+            const labels: Record<string, string> = {
+              awaiting_signature: "Waiting for wallet signature...",
+              creating_account: "Initializing confidential account...",
+              checking_recipient: "Checking recipient confidential account...",
+              depositing: "Depositing to confidential balance...",
+              transferring: "Submitting confidential transfer...",
+              finalizing: "Waiting for finalization...",
+            };
+            setStage(labels[next] ?? "Processing confidential transfer...");
+          }
+        );
+        logActivity(
+          "direct_paid_confidential",
+          "Confidential direct payment submitted",
+          `${ethers.formatUnits(amountRaw, 6)} USDC (confidential)`
+        );
+        setMessage("Confidential payment submitted.");
+      }
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Payment failed.");
+    } finally {
+      setStage(null);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
+      <h3 className="text-lg font-semibold text-stone-900">Direct payment</h3>
+      <p className="mt-1 text-sm text-stone-600">
+        Send USDC directly. Confidential mode is enabled on Arc testnet.
+      </p>
+
+      <div className="mt-4 space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-stone-700">Recipient wallet</label>
+          <input
+            value={recipient}
+            onChange={(e) => setRecipient(e.target.value)}
+            placeholder="0x..."
+            className={`mt-2 w-full rounded-2xl border border-stone-200 px-4 py-3 text-sm text-stone-900 ${accent.focus}`}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-stone-700">Amount (USDC)</label>
+          <input
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="10.00"
+            className={`mt-2 w-full rounded-2xl border border-stone-200 px-4 py-3 text-sm text-stone-900 ${accent.focus}`}
+          />
+        </div>
+        <div className="flex items-center gap-6">
+          <label className="flex items-center gap-2 text-sm text-stone-700">
+            <input
+              type="radio"
+              checked={mode === "normal"}
+              onChange={() => setMode("normal")}
+            />
+            Normal
+          </label>
+          <label className="flex items-center gap-2 text-sm text-stone-700">
+            <input
+              type="radio"
+              checked={mode === "confidential"}
+              onChange={() => setMode("confidential")}
+            />
+            Confidential
+          </label>
+        </div>
+        <button
+          type="button"
+          onClick={onPay}
+          disabled={!isConnected || !walletClient || loading}
+          className={`rounded-2xl px-6 py-3 text-sm font-semibold text-white ${accent.bg} ${accent.hover} shadow-lg transition disabled:opacity-50`}
+        >
+          {loading ? "Processing..." : "Pay now"}
+        </button>
+        {stage && <p className="text-sm text-stone-600">{stage}</p>}
+        {message && <p className="text-sm text-stone-600">{message}</p>}
+      </div>
+    </div>
+  );
+}
+

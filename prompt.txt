@@ -1,0 +1,193 @@
+You are an expert Web3 engineer, Solidity developer, system architect, AND product designer.
+You are helping a COMPLETE BEGINNER who does not know how to code yet.
+
+Your job is to TEACH while building.
+Never assume prior knowledge.
+Explain concepts before code.
+Explain WHY before HOW.
+Prefer simple, minimal, and professional solutions.
+
+PROJECT OVERVIEW:
+I want to build a Splitwise-like bill-splitting dApp with onchain settlement.
+The app supports BOTH normal (public) payments and confidential payments
+inspired by Fairblock’s confidentiality model.
+
+The app must feel SIMPLE, CLEAN, and PROFESSIONAL — not clunky, not hacky.
+
+CORE PRODUCT GOALS:
+- Clear tracking of who PAID and who HAS NOT PAID
+- Exact-payment enforcement (no partials, no manipulation)
+- Optional confidentiality for payments
+- Minimal UI, minimal features, maximum clarity
+- Beginner-friendly architecture
+
+────────────────────────
+CORE FUNCTIONAL REQUIREMENTS
+────────────────────────
+
+BILLS:
+1. A user can create a bill with:
+   - Bill ID
+   - Creator wallet address
+   - List of participant wallet addresses
+   - Exact amount owed per participant
+
+2. For each participant, the system MUST track:
+   - Has this participant paid? (YES / NO)
+   - If paid:
+     - Payment mode: NORMAL or CONFIDENTIAL
+   - Payment timestamp (optional)
+
+3. Bills are immutable after creation
+   - Amounts cannot be changed
+   - Participants cannot be changed
+
+PAYMENTS:
+4. Participants can settle their share by choosing:
+   - Normal (public) payment
+   - Confidential payment
+
+5. EXACT PAYMENT RULE (VERY IMPORTANT):
+   - Paying less than required → REJECT
+   - Paying more than required → REJECT
+   - Partial payments are NOT allowed
+   - Contract must enforce correctness
+
+CONFIDENTIAL PAYMENTS:
+6. Confidential payments must:
+   - Hide amount AND receiver onchain
+   - Appear as a generic contract interaction
+   - Validate correctness inside confidential execution
+   - Mark participant as PAID without revealing amount publicly
+
+7. The app UI must show:
+   - Paid / Unpaid status
+   - Payment mode (Normal / Confidential)
+   - Amount ONLY if payment was normal
+
+CHAIN SUPPORT:
+8. App must support:
+   - Base testnet
+   - ARC testnet
+   - Chain switching from frontend
+   - Same contract logic deployed on both chains
+
+────────────────────────
+USER PROFILES & DATA STORAGE
+────────────────────────
+
+USER IDENTITY:
+- Wallet address is the ONLY identity
+- No passwords
+- No usernames required
+
+PROFILES:
+- A lightweight user profile may exist
+- Profile creation happens on first wallet connect
+- Profile fields (all optional except wallet):
+  - walletAddress
+  - displayName
+  - email (optional, for reminders)
+
+DATA STORAGE RULES:
+- Do NOT force a specific storage solution
+- Propose multiple beginner-safe options:
+  - Offchain database (e.g. free backend)
+  - Decentralized storage (optional)
+- Explain tradeoffs clearly
+- Blockchain should NOT store profile data
+
+EMAIL REMINDERS (OPTIONAL FEATURE):
+- Users may opt-in to email reminders
+- Reminders are handled OFFCHAIN
+- Blockchain emits events only
+- Backend listens to events and sends emails
+
+PRIVACY RULE FOR EMAILS:
+- If payment is confidential:
+  - Do NOT include amount
+  - Do NOT include recipient details
+  - Only say “You have a confidential payment request”
+
+────────────────────────
+UI / UX REQUIREMENTS
+────────────────────────
+
+DESIGN PRINCIPLES:
+- Minimal
+- Calm
+- Professional
+- Fintech-like, NOT crypto-looking
+- Mobile-friendly
+
+UI STACK:
+- React (preferably Next.js)
+- Tailwind CSS
+- Neutral color palette (gray / slate / off-white)
+- Clear spacing and typography
+
+SCREENS (KEEP MINIMAL):
+1. Connect Wallet
+2. Create Bill
+3. Bill Details:
+   - Participants list
+   - Paid / Unpaid status
+   - Payment mode
+4. Payment Screen:
+   - Toggle: Normal / Confidential
+   - Clear CTA buttons
+
+STATUS INDICATORS:
+- Unpaid
+- Paid (Normal)
+- Paid (Confidential)
+
+NO:
+- Flashy animations
+- Web3 jargon
+- Visual clutter
+
+────────────────────────
+SMART CONTRACT REQUIREMENTS
+────────────────────────
+
+CONTRACT MUST:
+- Store bills
+- Store required amount per participant
+- Track payment status per participant
+- Enforce exact payment
+- Support both payment modes
+- Emit events for:
+  - BillCreated
+  - BillPaid (with payment mode only, NOT amount if confidential)
+
+CLEAR SEPARATION:
+- Public onchain data
+- Confidential execution data
+- Frontend-only state
+- Offchain profile & notification data
+
+DO NOT:
+- Write cryptography manually
+- Over-engineer security
+- Implement group netting or balances
+
+────────────────────────
+WHAT YOU MUST DELIVER
+────────────────────────
+
+1. High-level system architecture (plain English)
+2. UI/UX walkthrough BEFORE code
+3. File-by-file project structure
+4. Minimal Solidity contract:
+   - Structs
+   - Mappings
+   - Core functions
+5. Line-by-line explanation of contract code
+6. Explanation of frontend ↔ contract interaction
+7. Conceptual explanation of confidentiality integration
+8. Clear placeholders where Fairblock SDK would be used
+9. Beginner learning checklist at the end
+
+If something cannot be implemented without external SDKs,
+clearly label it as a PLACEHOLDER and explain how it would work conceptually.
