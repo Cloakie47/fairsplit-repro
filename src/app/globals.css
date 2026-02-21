@@ -11,4 +11,226 @@
 body {
   background: var(--surface);
   color: #292524;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+a[role="button"] {
+  transition:
+    transform 120ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease;
+}
+
+button:hover,
+a[role="button"]:hover {
+  filter: brightness(1.02);
+}
+
+button:active,
+a[role="button"]:active {
+  transform: translateY(1px) scale(0.985);
+}
+
+.nav-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  border-radius: 0.9rem;
+  background: #0a0a0a;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+  transition:
+    transform 140ms ease,
+    box-shadow 200ms ease,
+    background-color 200ms ease;
+}
+
+.nav-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px rgba(0, 0, 0, 0.24);
+  background: #1f1f1f;
+}
+
+.glass-surface {
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+}
+
+.header-shell {
+  background: rgba(255, 255, 255, 0.62);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+}
+
+@keyframes sway-slow {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(10px, -8px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes sway-mid {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-12px, -10px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes sway-fast {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(8px, -6px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-sway-slow {
+  animation: sway-slow 11s ease-in-out infinite;
+}
+
+.animate-sway-mid {
+  animation: sway-mid 9s ease-in-out infinite;
+}
+
+.animate-sway-fast {
+  animation: sway-fast 7s ease-in-out infinite;
+}
+
+@keyframes seed-float-a {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(10px, -18px, 0) rotate(3deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+}
+
+@keyframes seed-float-b {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(-12px, -14px, 0) rotate(-4deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+}
+
+@keyframes seed-float-c {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(7px, -12px, 0) rotate(5deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+}
+
+.dandelion-seed {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  opacity: 0.34;
+  will-change: transform;
+}
+
+.dandelion-seed::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: -14px;
+  width: 1px;
+  height: 14px;
+  background: currentColor;
+  opacity: 0.55;
+}
+
+.seed-blue {
+  background: rgba(59, 130, 246, 0.55);
+  color: rgba(59, 130, 246, 0.6);
+}
+
+.seed-orange {
+  background: rgba(249, 115, 22, 0.55);
+  color: rgba(249, 115, 22, 0.6);
+}
+
+.seed-neutral {
+  background: rgba(120, 113, 108, 0.45);
+  color: rgba(120, 113, 108, 0.5);
+}
+
+.seed-one {
+  left: 10%;
+  top: 20%;
+  animation: seed-float-a 11s ease-in-out infinite;
+}
+
+.seed-two {
+  left: 18%;
+  top: 14%;
+  animation: seed-float-b 9.5s ease-in-out infinite;
+}
+
+.seed-three {
+  left: 78%;
+  top: 18%;
+  animation: seed-float-c 10.5s ease-in-out infinite;
+}
+
+.seed-four {
+  left: 84%;
+  top: 12%;
+  animation: seed-float-b 12s ease-in-out infinite;
+}
+
+.seed-five {
+  left: 54%;
+  top: 8%;
+  animation: seed-float-a 8.8s ease-in-out infinite;
+}
+
+.seed-six {
+  left: 66%;
+  top: 24%;
+  animation: seed-float-c 11.7s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-sway-slow,
+  .animate-sway-mid,
+  .animate-sway-fast,
+  .seed-one,
+  .seed-two,
+  .seed-three,
+  .seed-four,
+  .seed-five,
+  .seed-six {
+    animation: none;
+  }
 }

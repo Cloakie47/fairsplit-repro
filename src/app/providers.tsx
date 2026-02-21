@@ -24,7 +24,7 @@ const config = createConfig({
   connectors: [
     metaMask({
       dappMetadata: {
-        name: "FairySplit",
+        name: "FairSplit",
       },
     }),
     injected({ shimDisconnect: true }),

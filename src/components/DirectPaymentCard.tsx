@@ -6,7 +6,10 @@ import { ethers } from "ethers";
 import { useChainTheme, CHAIN_ACCENT } from "@/lib/theme";
 import { USDC_ADDRESSES } from "@/lib/chains";
 import { transferUsdc } from "@/lib/usdc";
-import { performConfidentialPayment } from "@/lib/stabletrust";
+import {
+  performConfidentialPayment,
+  preflightConfidentialPayment,
+} from "@/lib/stabletrust";
 import { logActivity } from "@/lib/activity";
 import { walletClientToSigner } from "@/lib/wallet";
 
@@ -47,7 +50,15 @@ export function DirectPaymentCard() {
         );
         setMessage("Direct payment sent.");
       } else {
-        setStage("Preparing confidential transfer...");
+        setStage("Running confidential preflight checks...");
+        await preflightConfidentialPayment(
+          signer,
+          recipient,
+          usdc,
+          amountRaw,
+          chainId
+        );
+        setStage("Preflight complete. Opening wallet...");
         await performConfidentialPayment(
           signer,
           recipient,

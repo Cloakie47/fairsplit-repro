@@ -11,6 +11,8 @@ import {
   getSignerAddress,
   getConfidentialBalanceSummary,
   hasStoredConfidentialKeys,
+  preflightConfidentialTopUp,
+  preflightConfidentialWithdraw,
   withdrawConfidentialToUsdc,
 } from "@/lib/stabletrust";
 import { logActivity } from "@/lib/activity";
@@ -125,6 +127,9 @@ export default function ConfidentialPage() {
         throw new Error("Withdraw amount is greater than available confidential balance.");
       }
       const signer = await walletClientToSigner(walletClient);
+      setStage("Running withdraw preflight checks...");
+      await preflightConfidentialWithdraw(signer, usdc, withdrawAmount, chainId);
+      setStage("Preflight complete. Opening wallet...");
       await withdrawConfidentialToUsdc(signer, usdc, withdrawAmount, chainId, (next) => {
         setStage(statusLabels[next] ?? "Submitting withdraw transaction...");
       });
@@ -153,6 +158,9 @@ export default function ConfidentialPage() {
       const usdc = USDC_ADDRESSES[chainId];
       if (!usdc) throw new Error("Unsupported chain.");
       const signer = await walletClientToSigner(walletClient);
+      setStage("Running top-up preflight checks...");
+      await preflightConfidentialTopUp(signer, usdc, depositAmount, chainId);
+      setStage("Preflight complete. Opening wallet...");
       await depositUsdcToConfidential(signer, usdc, depositAmount, chainId, (next) => {
         setStage(statusLabels[next] ?? "Converting USDC to cUSDC...");
       });

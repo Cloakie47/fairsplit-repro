@@ -35,16 +35,16 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
 
   if (isConnected && address) {
     return (
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         {!isBase && !isArc && switchChain && (
           <button
             onClick={() => switchChain({ chainId: SUPPORTED_CHAINS.baseSepolia.id })}
-            className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-zinc-800"
+            className="nav-pill px-4 py-2.5 text-sm font-semibold"
           >
             Switch to Base
           </button>
         )}
-        <div className="flex items-center gap-2 rounded-2xl border border-white/70 bg-white/85 px-4 py-2 shadow-md backdrop-blur">
+        <div className="flex items-center gap-2 rounded-xl border border-white/80 bg-white/88 px-4 py-2.5 shadow-md backdrop-blur">
           <select
             value={chainId ?? ""}
             onChange={(e) => switchChain?.({ chainId: Number(e.target.value) })}
@@ -53,13 +53,13 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
             <option value={SUPPORTED_CHAINS.baseSepolia.id}>Base</option>
             <option value={SUPPORTED_CHAINS.arcTestnet.id}>Arc</option>
           </select>
-          <span className="border-l-2 border-stone-200 pl-3 text-sm font-semibold text-stone-700">
+          <span className="border-l border-stone-200 pl-3 text-sm font-semibold text-stone-700">
             {truncate(address)}
           </span>
         </div>
         <button
           onClick={() => disconnect()}
-          className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-zinc-800"
+          className="nav-pill px-4 py-2.5 text-sm font-semibold"
         >
           Disconnect
         </button>
@@ -82,7 +82,7 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
       type="button"
       onClick={() => connect({ connector: preferredConnector })}
       disabled={isPending}
-      className="inline-flex items-center justify-center rounded-2xl bg-black px-8 py-3.5 text-base font-bold text-white shadow-lg transition hover:bg-zinc-800 hover:shadow-xl disabled:opacity-60 disabled:hover:bg-black"
+      className="nav-pill px-8 py-3.5 text-base font-bold disabled:opacity-60"
     >
       {isPending ? "Connecting…" : "Connect Wallet"}
     </button>

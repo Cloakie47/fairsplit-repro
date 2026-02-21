@@ -9,9 +9,12 @@ import { LayoutShell } from "@/components/LayoutShell";
 import { ParticipantList } from "@/components/ParticipantList";
 import { PaymentForm } from "@/components/PaymentForm";
 import { getContract } from "@/lib/contract";
-import { CONTRACT_ADDRESSES } from "@/lib/chains";
+import { CONTRACT_ADDRESSES, SUPPORTED_CHAINS } from "@/lib/chains";
 import { approveUsdc } from "@/lib/usdc";
-import { performConfidentialPayment } from "@/lib/stabletrust";
+import {
+  performConfidentialPayment,
+  preflightConfidentialPayment,
+} from "@/lib/stabletrust";
 import { logActivity } from "@/lib/activity";
 import { markSplitRequestPaid } from "@/lib/requests";
 import { ethers } from "ethers";
@@ -128,6 +131,15 @@ export default function BillDetailPage() {
     try {
       const signer = await walletClientToSigner(walletClient);
       const contract = getContract(signer, chainId);
+      setPaymentStatus("Running confidential preflight checks...");
+      await preflightConfidentialPayment(
+        signer,
+        bill.creator,
+        bill.usdcToken,
+        bill.amountPerParticipant,
+        chainId
+      );
+      setPaymentStatus("Preflight complete. Opening wallet...");
 
       await performConfidentialPayment(
         signer,
@@ -149,9 +161,35 @@ export default function BillDetailPage() {
         }
       );
 
-      const tx = await contract.markPaidConfidential(billId, address);
-      setPaymentStatus("Confirming confidential bill status on contract...");
-      await tx.wait();
+      let markedOnChain = false;
+      const isArcCreatorOnlyPath =
+        chainId === SUPPORTED_CHAINS.arcTestnet.id &&
+        address.toLowerCase() !== bill.creator.toLowerCase();
+      if (isArcCreatorOnlyPath) {
+        setPaymentStatus(
+          "Confidential payment sent. On this Arc contract version, the split creator must confirm it on-chain."
+        );
+      } else {
+        try {
+          const tx = await contract.markPaidConfidential(billId, address);
+          setPaymentStatus("Confirming confidential bill status on contract...");
+          await tx.wait();
+          markedOnChain = true;
+        } catch (markError) {
+          const message =
+            markError instanceof Error
+              ? markError.message.toLowerCase()
+              : String(markError).toLowerCase();
+          const creatorOnly = message.includes("only creator can mark confidential pay");
+          if (!creatorOnly) {
+            throw markError;
+          }
+          setPaymentStatus(
+            "Confidential payment sent. On this Arc contract version, the split creator must confirm it on-chain."
+          );
+        }
+      }
+
       markSplitRequestPaid({
         chainId,
         billId,
@@ -165,7 +203,9 @@ export default function BillDetailPage() {
         "Bill paid (confidential)",
         `${ethers.formatUnits(bill.amountPerParticipant, 6)} USDC confidential for ${bill.name}`
       );
-      router.refresh();
+      if (markedOnChain) {
+        router.refresh();
+      }
       setStatuses((prev) =>
         prev.map((s, i) =>
           bill.participants[i]?.toLowerCase() === address.toLowerCase()

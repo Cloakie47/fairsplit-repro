@@ -76,7 +76,7 @@ export function NotificationBell() {
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="relative rounded-2xl bg-black px-3 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-zinc-800"
+        className="nav-pill relative px-4 py-2.5 text-sm font-semibold"
       >
         Alerts
         {unread > 0 && (

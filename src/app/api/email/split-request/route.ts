@@ -66,11 +66,11 @@ export async function POST(req: NextRequest) {
       const toLabel =
         recipient.displayName?.trim() ||
         `${recipient.walletAddress.slice(0, 6)}...${recipient.walletAddress.slice(-4)}`;
-      const subject = `FairySplit: New split request - ${payload.splitName}`;
+      const subject = `FairSplit: New split request - ${payload.splitName}`;
       const reminder = payload.customReminder?.trim();
       const body = `
         <div style="font-family:Arial,sans-serif;line-height:1.5;color:#111;">
-          <h2 style="margin:0 0 12px;">FairySplit Payment Request</h2>
+          <h2 style="margin:0 0 12px;">FairSplit Payment Request</h2>
           <p>Hi ${escapeHtml(toLabel)},</p>
           <p><strong>${escapeHtml(creatorLabel)}</strong> added you to a split:</p>
           <p style="margin:10px 0;padding:12px;background:#f5f5f5;border-radius:8px;">
@@ -83,16 +83,16 @@ export async function POST(req: NextRequest) {
               : ""
           }
           <p>
-            Open FairySplit to review and pay:
+            Open FairSplit to review and pay:
             <a href="${escapeHtml(appUrl)}" style="color:#0a58ca;">${escapeHtml(appUrl)}</a>
           </p>
-          <p style="font-size:12px;color:#666;">This message was sent by FairySplit.</p>
+          <p style="font-size:12px;color:#666;">This message was sent by FairSplit.</p>
         </div>
       `;
 
       try {
         await transport.sendMail({
-          from: `"FairySplit" <${fromAddress}>`,
+          from: `"FairSplit" <${fromAddress}>`,
           to: recipient.email,
           subject,
           html: body,

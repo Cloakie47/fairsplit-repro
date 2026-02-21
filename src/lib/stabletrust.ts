@@ -13,7 +13,7 @@ import { getUsdcContract } from "@/lib/usdc";
 // import { ConfidentialTransferClient } from "@fairblock/stabletrust";
 
 const STABLETRUST_ADDRESSES: Record<number, string> = {
-  84532: "0x73D2bc5B5c7aF5C3726E7bEf0BD8b4931923fdA9", // Base testnet
+  84532: "0x6FE45A71F5232a4E5e583Ae31A538360fB1e6aDb", // Base testnet
   1244: "0xf085e801a6FD9d03b09566a738734B7e2Bb065De", // Arc legacy chain id
   5042002: "0xf085e801a6FD9d03b09566a738734B7e2Bb065De", // Arc testnet app chain id
 };
@@ -33,6 +33,12 @@ const STABLETRUST_CHAIN_IDS: Record<number, number> = {
 type ConfidentialKeys = {
   privateKey: string;
   publicKey: string;
+};
+
+export type ConfidentialPreflightSummary = {
+  address: string;
+  availableCusdc?: number;
+  pendingCusdc?: number;
 };
 
 export type ConfidentialStatus =
@@ -299,6 +305,117 @@ export async function ensureConfidentialAccount(
   // Persist keys immediately and treat readiness as best-effort.
   await waitForAccountReady(client, address, onStatus);
   return keys;
+}
+
+async function requireLocalKeysAndAccountReady(
+  signer: ethers.Signer,
+  chainId: number
+): Promise<{ client: ConfidentialTransferClient; address: string; keys: ConfidentialKeys }> {
+  const client = getClient(chainId);
+  const address = (await signer.getAddress()).toLowerCase();
+  const keys = getStoredKeys(chainId, address);
+  if (!keys) {
+    throw new Error("Initialize confidential account first.");
+  }
+  const accountInfo = await withTimeout(
+    client.getAccountInfo(address),
+    30000,
+    "Confidential account check"
+  );
+  if (!accountInfo?.exists) {
+    throw new Error(
+      "Confidential account is still finalizing. Wait a moment, then retry."
+    );
+  }
+  return { client, address, keys };
+}
+
+export async function preflightConfidentialPayment(
+  signer: ethers.Signer,
+  recipient: string,
+  tokenAddress: string,
+  amountRaw: bigint,
+  chainId: number
+): Promise<ConfidentialPreflightSummary> {
+  if (!ethers.isAddress(recipient)) throw new Error("Recipient address is invalid.");
+  const { client, address, keys } = await requireLocalKeysAndAccountReady(signer, chainId);
+
+  const recipientInfo = await withTimeout(
+    client.getAccountInfo(recipient),
+    30000,
+    "Recipient account check"
+  );
+  if (!recipientInfo?.exists) {
+    throw new Error(
+      "Recipient has no confidential account yet. Ask them to initialize Confidential Wallet first."
+    );
+  }
+
+  const amountX100 = usdcRawToX100(amountRaw);
+  const balance = await withTimeout(
+    client.getConfidentialBalance(address, keys.privateKey, tokenAddress),
+    60000,
+    "Balance refresh"
+  );
+  const availableX100 = balance.available.amount;
+  const shortfallX100 = Math.max(0, amountX100 - availableX100);
+  if (shortfallX100 > 0) {
+    throw new Error(
+      `Insufficient cUSDC for confidential payment. Need ${x100ToUsdcDisplay(
+        shortfallX100
+      )} more cUSDC. Open Confidential Wallet and convert USDC to cUSDC first.`
+    );
+  }
+  return {
+    address,
+    availableCusdc: balance.available.amount / 100,
+    pendingCusdc: balance.pending.amount / 100,
+  };
+}
+
+export async function preflightConfidentialTopUp(
+  signer: ethers.Signer,
+  tokenAddress: string,
+  displayAmount: string,
+  chainId: number
+): Promise<ConfidentialPreflightSummary> {
+  const { client, address, keys } = await requireLocalKeysAndAccountReady(signer, chainId);
+  void usdcDisplayToX100(displayAmount);
+  const balance = await withTimeout(
+    client.getConfidentialBalance(address, keys.privateKey, tokenAddress),
+    60000,
+    "Balance refresh"
+  );
+  return {
+    address,
+    availableCusdc: balance.available.amount / 100,
+    pendingCusdc: balance.pending.amount / 100,
+  };
+}
+
+export async function preflightConfidentialWithdraw(
+  signer: ethers.Signer,
+  tokenAddress: string,
+  displayAmount: string,
+  chainId: number
+): Promise<ConfidentialPreflightSummary> {
+  const { client, address, keys } = await requireLocalKeysAndAccountReady(signer, chainId);
+  const amountX100 = usdcDisplayToX100(displayAmount);
+  const balance = await withTimeout(
+    client.getConfidentialBalance(address, keys.privateKey, tokenAddress),
+    60000,
+    "Balance refresh"
+  );
+  if (amountX100 > balance.available.amount) {
+    throw new Error(
+      "Withdraw amount is greater than available confidential balance."
+    );
+  }
+  return {
+    address,
+    availableCusdc: balance.available.amount / 100,
+    pendingCusdc: balance.pending.amount / 100,
+  };
 }
 
 export async function performConfidentialPayment(
