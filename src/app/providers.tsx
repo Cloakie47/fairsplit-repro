@@ -2,8 +2,8 @@
 
 import { WagmiProvider, createConfig, http } from "wagmi";
 import { injected, metaMask } from "wagmi/connectors";
-import { baseSepolia } from "wagmi/chains";
 import { defineChain } from "viem";
+import { baseSepolia } from "viem/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SUPPORTED_CHAINS } from "@/lib/chains";
 

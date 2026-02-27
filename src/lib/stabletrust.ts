@@ -13,9 +13,16 @@ import { getUsdcContract } from "@/lib/usdc";
 // import { ConfidentialTransferClient } from "@fairblock/stabletrust";
 
 const STABLETRUST_ADDRESSES: Record<number, string> = {
-  84532: "0x6FE45A71F5232a4E5e583Ae31A538360fB1e6aDb", // Base testnet
-  1244: "0xf085e801a6FD9d03b09566a738734B7e2Bb065De", // Arc legacy chain id
-  5042002: "0xf085e801a6FD9d03b09566a738734B7e2Bb065De", // Arc testnet app chain id
+  84532: "0x962a8A7CD28BfFBb17C4F6Ec388782cca3ffd618", // Base testnet (current)
+  1244: "0xb20aB54e1c6AE55B0DD11FEB7FFf3fF1E9631f19", // Arc canonical chain id (current deployment)
+  // Arc app-chain id maps to the same canonical StableTrust deployment.
+  5042002: "0xb20aB54e1c6AE55B0DD11FEB7FFf3fF1E9631f19",
+};
+
+const STABLETRUST_LEGACY_ADDRESSES: Record<number, string[]> = {
+  84532: ["0x6FE45A71F5232a4E5e583Ae31A538360fB1e6aDb"],
+  1244: ["0xf085e801a6FD9d03b09566a738734B7e2Bb065De"],
+  5042002: ["0xf085e801a6FD9d03b09566a738734B7e2Bb065De"],
 };
 
 const STABLETRUST_RPCS: Record<number, string> = {
@@ -27,6 +34,7 @@ const STABLETRUST_RPCS: Record<number, string> = {
 const STABLETRUST_CHAIN_IDS: Record<number, number> = {
   84532: 84532,
   1244: 1244,
+  // Must match the connected wallet chain for eth_signTypedData_v4.
   5042002: 5042002,
 };
 
@@ -54,25 +62,54 @@ export type ConfidentialStatus =
 
 type StatusHandler = (status: ConfidentialStatus) => void;
 
-function keysScope(chainId: number): string {
-  const contract = STABLETRUST_ADDRESSES[chainId];
+function isValidConfidentialKeys(value: unknown): value is ConfidentialKeys {
+  if (!value || typeof value !== "object") return false;
+  const maybe = value as Partial<ConfidentialKeys>;
+  return (
+    typeof maybe.privateKey === "string" &&
+    maybe.privateKey.length > 0 &&
+    typeof maybe.publicKey === "string" &&
+    maybe.publicKey.length > 0
+  );
+}
+
+function keysScope(chainId: number, contractAddress?: string): string {
+  const contract = contractAddress ?? STABLETRUST_ADDRESSES[chainId];
   if (!contract) return `${chainId}_unknown`;
   return `${chainId}_${contract.toLowerCase()}`;
 }
 
-function keysStorageKey(chainId: number, address: string) {
-  return `fairysplit_stabletrust_keys_${keysScope(chainId)}_${address.toLowerCase()}`;
+function keysStorageKey(chainId: number, address: string, contractAddress?: string) {
+  return `fairysplit_stabletrust_keys_${keysScope(chainId, contractAddress)}_${address.toLowerCase()}`;
 }
 
 function legacyKeysStorageKey(chainId: number, address: string) {
   return `fairysplit_stabletrust_keys_${chainId}_${address.toLowerCase()}`;
 }
 
-function getStoredKeys(chainId: number, address: string): ConfidentialKeys | null {
+function getStoredKeys(
+  chainId: number,
+  address: string,
+  contractAddress?: string
+): ConfidentialKeys | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(keysStorageKey(chainId, address));
-    return raw ? (JSON.parse(raw) as ConfidentialKeys) : null;
+    const raw = window.localStorage.getItem(keysStorageKey(chainId, address, contractAddress));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    return isValidConfidentialKeys(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function getLegacyUnscopedStoredKeys(chainId: number, address: string): ConfidentialKeys | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(legacyKeysStorageKey(chainId, address));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    return isValidConfidentialKeys(parsed) ? parsed : null;
   } catch {
     return null;
   }
@@ -85,9 +122,29 @@ function setStoredKeys(chainId: number, address: string, keys: ConfidentialKeys)
   window.localStorage.removeItem(legacyKeysStorageKey(chainId, address));
 }
 
-function getClient(chainId: number): ConfidentialTransferClient {
+function clearStoredKeys(chainId: number, address: string) {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(keysStorageKey(chainId, address));
+  window.localStorage.removeItem(legacyKeysStorageKey(chainId, address));
+}
+
+function getLegacyContractAddresses(chainId: number): string[] {
+  const configured = STABLETRUST_LEGACY_ADDRESSES[chainId] ?? [];
+  const active = STABLETRUST_ADDRESSES[chainId]?.toLowerCase();
+  return configured.filter((address, idx) => {
+    const normalized = address.toLowerCase();
+    return normalized !== active && configured.findIndex((x) => x.toLowerCase() === normalized) === idx;
+  });
+}
+
+function isLikelyDecryptionFailure(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return msg.includes("decryption failed") || msg.includes("private key is required");
+}
+
+function getClient(chainId: number, contractAddressOverride?: string): ConfidentialTransferClient {
   const rpc = STABLETRUST_RPCS[chainId];
-  const contractAddress = STABLETRUST_ADDRESSES[chainId];
+  const contractAddress = contractAddressOverride ?? STABLETRUST_ADDRESSES[chainId];
   const sdkChainId = STABLETRUST_CHAIN_IDS[chainId];
   if (!rpc || !contractAddress || !sdkChainId) {
     throw new Error("Confidential transfer is not configured for this chain.");
@@ -95,34 +152,49 @@ function getClient(chainId: number): ConfidentialTransferClient {
   return new ConfidentialTransferClient(rpc, contractAddress, sdkChainId);
 }
 
-function usdcRawToX100(amountRaw: bigint): number {
-  const factor = BigInt(10000); // USDC 6 decimals -> x100 scale (2 decimals)
+function usdcRawToX100(amountRaw: bigint): bigint {
   if (amountRaw <= BigInt(0)) throw new Error("Amount must be greater than zero.");
-  if (amountRaw % factor !== BigInt(0)) {
-    throw new Error("Confidential amount supports up to 2 decimals.");
-  }
-  const scaled = amountRaw / factor;
-  const asNum = Number(scaled);
-  if (!Number.isSafeInteger(asNum)) {
-    throw new Error("Amount too large for confidential transfer.");
-  }
-  return asNum;
+  // Keep raw token units (USDC 6 decimals) for SDK operations.
+  return amountRaw;
 }
 
-function usdcDisplayToX100(displayAmount: string): number {
-  const parsed = ethers.parseUnits(displayAmount || "0", 2);
+function usdcDisplayToX100(displayAmount: string): bigint {
+  // Parse user-facing USDC input into raw token units (6 decimals).
+  const parsed = ethers.parseUnits(displayAmount || "0", 6);
   if (parsed <= BigInt(0)) throw new Error("Amount must be greater than zero.");
-  const asNum = Number(parsed);
-  if (!Number.isSafeInteger(asNum)) throw new Error("Amount too large.");
+  return parsed;
+}
+
+function x100ToUsdcNumber(amountX100: bigint): number {
+  const formatted = ethers.formatUnits(amountX100, 6);
+  const asNum = Number(formatted);
+  if (!Number.isFinite(asNum)) throw new Error("Amount too large to display safely.");
   return asNum;
 }
 
-function x100ToUsdcDisplay(amountX100: number): string {
-  return (amountX100 / 100).toFixed(2);
+function x100ToUsdcDisplay(amountX100: bigint): string {
+  return x100ToUsdcNumber(amountX100).toFixed(2);
 }
 
-function x100ToUsdcRaw(amountX100: number): bigint {
-  return BigInt(amountX100) * BigInt(10000); // x100 -> 6 decimals
+function x100ToUsdcRaw(amountX100: bigint): bigint {
+  // Value is already in raw token units.
+  return amountX100;
+}
+
+function toSdkAmount(amountX100: bigint): number {
+  const asNum = Number(amountX100);
+  if (!Number.isSafeInteger(asNum)) {
+    throw new Error("Amount too large for SDK call.");
+  }
+  return asNum;
+}
+
+function asBigIntAmount(value: bigint | number | string): bigint {
+  try {
+    return BigInt(value);
+  } catch {
+    throw new Error("Unexpected confidential balance format.");
+  }
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
@@ -242,11 +314,72 @@ export function hasStoredConfidentialKeys(chainId: number, address: string): boo
   return !!getStoredKeys(chainId, address);
 }
 
+async function refreshStoredKeysFromSigner(
+  signer: ethers.Signer,
+  chainId: number
+): Promise<{ address: string; keys: ConfidentialKeys }> {
+  const client = getClient(chainId);
+  const address = (await signer.getAddress()).toLowerCase();
+  const refreshed = await withRetry({
+    label: "Account initialization",
+    retries: 0,
+    action: () =>
+      withTimeout(
+        client.ensureAccount(signer, {
+          waitForFinalization: false,
+          maxAttempts: 30,
+        }),
+        120000,
+        "Account initialization"
+      ),
+  });
+  if (!isValidConfidentialKeys(refreshed)) {
+    throw new Error(
+      "Unable to recover confidential keys. Re-initialize account and retry."
+    );
+  }
+  setStoredKeys(chainId, address, refreshed);
+  return { address, keys: refreshed };
+}
+
+async function readLegacyBalanceIfPresent(
+  signer: ethers.Signer,
+  tokenAddress: string,
+  chainId: number
+): Promise<boolean> {
+  const address = (await signer.getAddress()).toLowerCase();
+  const legacyUnscopedKeys = getLegacyUnscopedStoredKeys(chainId, address);
+  for (const legacyContract of getLegacyContractAddresses(chainId)) {
+    const legacyKeys =
+      getStoredKeys(chainId, address, legacyContract) ??
+      legacyUnscopedKeys;
+    if (!legacyKeys) continue;
+    try {
+      const legacyClient = getClient(chainId, legacyContract);
+      const account = await withTimeout(
+        legacyClient.getAccountInfo(address),
+        30000,
+        "Legacy account check"
+      );
+      if (!account?.exists) continue;
+      const legacyBalance = await withTimeout(
+        legacyClient.getConfidentialBalance(address, legacyKeys.privateKey, tokenAddress),
+        60000,
+        "Legacy balance refresh"
+      );
+      if (asBigIntAmount(legacyBalance.amount) > BigInt(0)) return true;
+    } catch {
+      // Best-effort migration signal only.
+    }
+  }
+  return false;
+}
+
 async function ensureStableTrustAllowance(
   signer: ethers.Signer,
   tokenAddress: string,
   chainId: number,
-  requiredX100: number,
+  requiredX100: bigint,
   onStatus?: StatusHandler
 ): Promise<void> {
   const spender = STABLETRUST_ADDRESSES[chainId];
@@ -286,7 +419,7 @@ export async function ensureConfidentialAccount(
   const client = getClient(chainId);
   onStatus?.("awaiting_signature");
   onStatus?.("creating_account");
-  const keys = (await withRetry({
+  const derived = await withRetry({
     label: "Account initialization",
     onStatus,
     retries: 0,
@@ -299,12 +432,16 @@ export async function ensureConfidentialAccount(
         120000,
         "Account initialization"
       ),
-  })) as ConfidentialKeys;
-  setStoredKeys(chainId, address, keys);
+  });
+  if (!isValidConfidentialKeys(derived)) {
+    clearStoredKeys(chainId, address);
+    throw new Error("Failed to derive confidential keys. Please retry initialization.");
+  }
+  setStoredKeys(chainId, address, derived);
   // Base testnet may finalize/index slower than the SDK polling window.
   // Persist keys immediately and treat readiness as best-effort.
   await waitForAccountReady(client, address, onStatus);
-  return keys;
+  return derived;
 }
 
 async function requireLocalKeysAndAccountReady(
@@ -357,9 +494,10 @@ export async function preflightConfidentialPayment(
     60000,
     "Balance refresh"
   );
-  const availableX100 = balance.available.amount;
-  const shortfallX100 = Math.max(0, amountX100 - availableX100);
-  if (shortfallX100 > 0) {
+  const availableX100 = asBigIntAmount(balance.available.amount);
+  const shortfallX100 =
+    amountX100 > availableX100 ? amountX100 - availableX100 : BigInt(0);
+  if (shortfallX100 > BigInt(0)) {
     throw new Error(
       `Insufficient cUSDC for confidential payment. Need ${x100ToUsdcDisplay(
         shortfallX100
@@ -368,8 +506,8 @@ export async function preflightConfidentialPayment(
   }
   return {
     address,
-    availableCusdc: balance.available.amount / 100,
-    pendingCusdc: balance.pending.amount / 100,
+    availableCusdc: x100ToUsdcNumber(asBigIntAmount(balance.available.amount)),
+    pendingCusdc: x100ToUsdcNumber(asBigIntAmount(balance.pending.amount)),
   };
 }
 
@@ -388,8 +526,8 @@ export async function preflightConfidentialTopUp(
   );
   return {
     address,
-    availableCusdc: balance.available.amount / 100,
-    pendingCusdc: balance.pending.amount / 100,
+    availableCusdc: x100ToUsdcNumber(asBigIntAmount(balance.available.amount)),
+    pendingCusdc: x100ToUsdcNumber(asBigIntAmount(balance.pending.amount)),
   };
 }
 
@@ -406,15 +544,15 @@ export async function preflightConfidentialWithdraw(
     60000,
     "Balance refresh"
   );
-  if (amountX100 > balance.available.amount) {
+  if (amountX100 > asBigIntAmount(balance.available.amount)) {
     throw new Error(
       "Withdraw amount is greater than available confidential balance."
     );
   }
   return {
     address,
-    availableCusdc: balance.available.amount / 100,
-    pendingCusdc: balance.pending.amount / 100,
+    availableCusdc: x100ToUsdcNumber(asBigIntAmount(balance.available.amount)),
+    pendingCusdc: x100ToUsdcNumber(asBigIntAmount(balance.pending.amount)),
   };
 }
 
@@ -462,9 +600,10 @@ export async function performConfidentialPayment(
   });
 
   // Use available cUSDC first; only deposit missing amount from public USDC if needed.
-  const availableX100 = senderBalance.available.amount;
-  const shortfallX100 = Math.max(0, amountX100 - availableX100);
-  if (shortfallX100 > 0) {
+  const availableX100 = asBigIntAmount(senderBalance.available.amount);
+  const shortfallX100 =
+    amountX100 > availableX100 ? amountX100 - availableX100 : BigInt(0);
+  if (shortfallX100 > BigInt(0)) {
     throw new Error(
       `Insufficient cUSDC for confidential payment. Need ${x100ToUsdcDisplay(
         shortfallX100
@@ -478,7 +617,7 @@ export async function performConfidentialPayment(
     retries: 0,
     action: () =>
       withTimeout(
-        client.confidentialTransfer(signer, recipient, tokenAddress, amountX100, {
+        client.confidentialTransfer(signer, recipient, tokenAddress, toSdkAmount(amountX100), {
           waitForFinalization: true,
         }),
         180000,
@@ -506,7 +645,7 @@ export async function depositUsdcToConfidential(
     retries: 0,
     action: () =>
       withTimeout(
-        client.confidentialDeposit(signer, tokenAddress, amountX100, {
+        client.confidentialDeposit(signer, tokenAddress, toSdkAmount(amountX100), {
           waitForFinalization: true,
         }),
         180000,
@@ -523,20 +662,47 @@ export async function getConfidentialBalanceSummary(
 ): Promise<{ total: number; available: number; pending: number }> {
   const client = getClient(chainId);
   const address = (await signer.getAddress()).toLowerCase();
-  const keys = getStoredKeys(chainId, address);
+  let keys = getStoredKeys(chainId, address);
   if (!keys) {
     throw new Error("Initialize confidential account first.");
   }
   onStatus?.("reading_balance");
-  const balance = await withTimeout(
-    client.getConfidentialBalance(address, keys.privateKey, tokenAddress),
-    60000,
-    "Balance refresh"
-  );
+  let balance: Awaited<
+    ReturnType<ConfidentialTransferClient["getConfidentialBalance"]>
+  >;
+  try {
+    balance = await withTimeout(
+      client.getConfidentialBalance(address, keys.privateKey, tokenAddress),
+      60000,
+      "Balance refresh"
+    );
+  } catch (error) {
+    if (!isLikelyDecryptionFailure(error)) throw error;
+    try {
+      const recovered = await refreshStoredKeysFromSigner(signer, chainId);
+      keys = recovered.keys;
+      balance = await withTimeout(
+        client.getConfidentialBalance(address, keys.privateKey, tokenAddress),
+        60000,
+        "Balance refresh"
+      );
+    } catch (recoveryError) {
+      const hasLegacyBalance = await readLegacyBalanceIfPresent(signer, tokenAddress, chainId);
+      if (hasLegacyBalance) {
+        throw new Error(
+          "Detected confidential funds on a previous StableTrust deployment. Your current app is using the updated deployment, so old balances cannot be decrypted here. Use the previous deployment to withdraw/migrate funds, then initialize this deployment again."
+        );
+      }
+      if (!isLikelyDecryptionFailure(recoveryError)) throw recoveryError;
+      throw new Error(
+        "Confidential key mismatch detected. Re-initialize Confidential Wallet and confirm the signature prompt from the same wallet/account, then retry refresh."
+      );
+    }
+  }
   return {
-    total: balance.amount / 100,
-    available: balance.available.amount / 100,
-    pending: balance.pending.amount / 100,
+    total: x100ToUsdcNumber(asBigIntAmount(balance.amount)),
+    available: x100ToUsdcNumber(asBigIntAmount(balance.available.amount)),
+    pending: x100ToUsdcNumber(asBigIntAmount(balance.pending.amount)),
   };
 }
 
@@ -560,7 +726,7 @@ export async function withdrawConfidentialToUsdc(
     retries: 0,
     action: () =>
       withTimeout(
-        client.withdraw(signer, tokenAddress, amountX100, {
+        client.withdraw(signer, tokenAddress, toSdkAmount(amountX100), {
           waitForFinalization: true,
         }),
         180000,
