@@ -28,6 +28,7 @@ function getProfiles(): Record<string, Profile> {
 function setProfiles(profiles: Record<string, Profile>) {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
+  window.dispatchEvent(new Event("fairysplit-profile-updated"));
 }
 
 export function getProfile(walletAddress: string): Profile | null {

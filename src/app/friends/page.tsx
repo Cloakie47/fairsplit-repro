@@ -46,23 +46,23 @@ export default function FriendsPage() {
 
   return (
     <LayoutShell>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-semibold tracking-tight text-stone-900">Friends</h1>
+      <div className="mb-5 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight text-stone-900 md:text-3xl">Friends</h1>
         <Link
           href="/"
-          className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-zinc-800"
+          className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-800 shadow-sm transition hover:bg-stone-100"
         >
           Back home
         </Link>
       </div>
 
       {!isConnected ? (
-        <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
+        <div className="mx-auto max-w-3xl rounded-2xl border border-stone-200 bg-white/95 p-5">
           <p className="text-stone-600">Connect wallet to manage your friends list.</p>
         </div>
       ) : (
-        <div className="space-y-5">
-          <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
+        <div className="mx-auto max-w-3xl space-y-4">
+          <div className="rounded-2xl border border-stone-200 bg-white/95 p-5">
             <h2 className="text-lg font-semibold text-stone-900">Add friend</h2>
             <p className="mt-1 text-sm text-stone-600">
               Save a wallet address with a nickname so incoming requests are recognizable.
@@ -91,13 +91,13 @@ export default function FriendsPage() {
             <button
               type="button"
               onClick={onAdd}
-              className="mt-4 rounded-2xl bg-black px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-zinc-800"
+              className="mt-4 rounded-xl border border-[#d56ac7] bg-[#f7b8ee] px-4 py-2.5 text-sm font-semibold text-stone-900 shadow-md transition hover:brightness-95"
             >
               Save friend
             </button>
           </div>
 
-          <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
+          <div className="rounded-2xl border border-stone-200 bg-white/95 p-5">
             <h2 className="text-lg font-semibold text-stone-900">Your friends</h2>
             {friends.length === 0 ? (
               <p className="mt-2 text-sm text-stone-600">No friends yet. Add addresses above.</p>
@@ -118,7 +118,7 @@ export default function FriendsPage() {
                     <button
                       type="button"
                       onClick={() => onRemove(f.friendAddress)}
-                      className="rounded-xl bg-black px-3 py-2 text-xs font-semibold text-white transition hover:bg-zinc-800"
+                      className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-800 transition hover:bg-stone-100"
                     >
                       Remove
                     </button>

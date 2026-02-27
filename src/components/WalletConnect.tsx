@@ -8,6 +8,8 @@ import {
 } from "wagmi";
 import { CHAIN_ACCENT, ChainTheme } from "@/lib/theme";
 import { SUPPORTED_CHAINS } from "@/lib/chains";
+import { getProfile } from "@/lib/profile";
+import { useEffect, useState } from "react";
 
 type Accent = (typeof CHAIN_ACCENT)[ChainTheme];
 
@@ -20,9 +22,28 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
   const { connect, connectors, isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
+  const [displayName, setDisplayName] = useState<string | null>(null);
 
   const truncate = (addr: string) =>
     `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+
+  useEffect(() => {
+    const refreshProfile = () => {
+      if (!address) {
+        setDisplayName(null);
+        return;
+      }
+      const profile = getProfile(address);
+      setDisplayName(profile?.displayName?.trim() || null);
+    };
+    refreshProfile();
+    window.addEventListener("fairysplit-profile-updated", refreshProfile);
+    window.addEventListener("storage", refreshProfile);
+    return () => {
+      window.removeEventListener("fairysplit-profile-updated", refreshProfile);
+      window.removeEventListener("storage", refreshProfile);
+    };
+  }, [address]);
 
   const isBase = chainId === SUPPORTED_CHAINS.baseSepolia.id;
   const isArc = chainId === SUPPORTED_CHAINS.arcTestnet.id;
@@ -39,27 +60,27 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
         {!isBase && !isArc && switchChain && (
           <button
             onClick={() => switchChain({ chainId: SUPPORTED_CHAINS.baseSepolia.id })}
-            className="nav-pill px-4 py-2.5 text-sm font-semibold"
+            className="h-10 rounded-xl border border-stone-300 bg-white px-3 text-sm font-semibold text-stone-800 shadow-sm transition hover:bg-stone-100"
           >
             Switch to Base
           </button>
         )}
-        <div className="flex items-center gap-2 rounded-xl border border-white/80 bg-white/88 px-4 py-2.5 shadow-md backdrop-blur">
+        <div className="flex h-10 items-center gap-2 rounded-xl border border-stone-300 bg-white px-3 shadow-sm">
           <select
             value={chainId ?? ""}
             onChange={(e) => switchChain?.({ chainId: Number(e.target.value) })}
-            className="border-0 bg-transparent text-sm font-semibold text-stone-800 focus:outline-none"
+            className="h-full border-0 bg-transparent text-sm font-semibold text-stone-800 focus:outline-none"
           >
             <option value={SUPPORTED_CHAINS.baseSepolia.id}>Base</option>
             <option value={SUPPORTED_CHAINS.arcTestnet.id}>Arc</option>
           </select>
-          <span className="border-l border-stone-200 pl-3 text-sm font-semibold text-stone-700">
-            {truncate(address)}
+          <span className="max-w-28 truncate border-l border-stone-200 pl-3 text-sm font-semibold text-stone-700">
+            {displayName ?? truncate(address)}
           </span>
         </div>
         <button
           onClick={() => disconnect()}
-          className="nav-pill px-4 py-2.5 text-sm font-semibold"
+          className="h-10 rounded-xl border border-stone-300 bg-white px-3 text-sm font-semibold text-stone-800 shadow-sm transition hover:bg-stone-100"
         >
           Disconnect
         </button>

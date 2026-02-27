@@ -177,20 +177,20 @@ export default function ConfidentialPage() {
 
   return (
     <LayoutShell>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-semibold tracking-tight text-stone-900">
+      <div className="mb-5 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight text-stone-900 md:text-3xl">
           Confidential Wallet
         </h1>
         <Link
           href="/"
-          className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-zinc-800"
+          className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-800 shadow-sm transition hover:bg-stone-100"
         >
           Back home
         </Link>
       </div>
 
-      <div className="space-y-5">
-        <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-stone-200 bg-white/95 p-5">
           <p className="text-sm text-stone-600">
             Use this page to initialize your confidential account, convert USDC to cUSDC,
             view confidential balances, and convert cUSDC back to USDC.
@@ -202,38 +202,38 @@ export default function ConfidentialPage() {
           )}
         </div>
 
-        <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
+        <div className="rounded-2xl border border-stone-200 bg-white/95 p-5">
           <div className="flex flex-wrap gap-3">
             <button
               onClick={setupAccount}
               disabled={!canUseConfidential || loading}
-              className="rounded-2xl bg-black px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-zinc-800 disabled:opacity-50"
+              className="rounded-xl border border-[#d56ac7] bg-[#f7b8ee] px-4 py-2.5 text-sm font-semibold text-stone-900 shadow-md transition hover:brightness-95 disabled:opacity-50"
             >
               Initialize account
             </button>
             <button
               onClick={refreshBalance}
               disabled={!canUseConfidential || loading}
-              className="rounded-2xl bg-black px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-zinc-800 disabled:opacity-50"
+              className="rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-800 shadow-sm transition hover:bg-stone-100 disabled:opacity-50"
             >
               Refresh balance
             </button>
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-stone-200 bg-white p-4">
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-stone-200 bg-white p-3.5">
               <p className="text-xs text-stone-500">Total</p>
               <p className="text-xl font-semibold text-stone-900">
                 {balance ? balance.total.toFixed(2) : "--"} cUSDC
               </p>
             </div>
-            <div className="rounded-2xl border border-stone-200 bg-white p-4">
+            <div className="rounded-xl border border-stone-200 bg-white p-3.5">
               <p className="text-xs text-stone-500">Available cUSDC</p>
               <p className="text-xl font-semibold text-stone-900">
                 {balance ? balance.available.toFixed(2) : "--"} cUSDC
               </p>
             </div>
-            <div className="rounded-2xl border border-stone-200 bg-white p-4">
+            <div className="rounded-xl border border-stone-200 bg-white p-3.5">
               <p className="text-xs text-stone-500">Pending cUSDC</p>
               <p className="text-xl font-semibold text-stone-900">
                 {balance ? balance.pending.toFixed(2) : "--"} cUSDC
@@ -242,7 +242,7 @@ export default function ConfidentialPage() {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
+        <div className="rounded-2xl border border-stone-200 bg-white/95 p-5">
           <h2 className="text-lg font-semibold text-stone-900">Convert USDC to cUSDC</h2>
           <p className="mt-1 text-sm text-stone-600">
             Tops up your confidential balance from your public wallet balance.
@@ -257,14 +257,14 @@ export default function ConfidentialPage() {
             <button
               onClick={topUpConfidential}
               disabled={depositDisabled}
-              className="rounded-2xl bg-black px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-zinc-800 disabled:opacity-50"
+              className="rounded-xl border border-[#d56ac7] bg-[#f7b8ee] px-4 py-2.5 text-sm font-semibold text-stone-900 shadow-md transition hover:brightness-95 disabled:opacity-50"
             >
               Convert to cUSDC
             </button>
           </div>
         </div>
 
-        <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
+        <div className="rounded-2xl border border-stone-200 bg-white/95 p-5">
           <h2 className="text-lg font-semibold text-stone-900">Convert cUSDC to USDC</h2>
           <p className="mt-1 text-sm text-stone-600">
             Moves confidential available balance into your normal wallet USDC balance.
@@ -279,7 +279,7 @@ export default function ConfidentialPage() {
             <button
               onClick={withdraw}
               disabled={withdrawDisabled}
-              className="rounded-2xl bg-black px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-zinc-800 disabled:opacity-50"
+              className="rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-800 shadow-sm transition hover:bg-stone-100 disabled:opacity-50"
             >
               Withdraw
             </button>

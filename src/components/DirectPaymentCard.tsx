@@ -94,7 +94,7 @@ export function DirectPaymentCard() {
   };
 
   return (
-    <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
+    <div className="rounded-2xl border border-stone-200 bg-white/95 p-5">
       <h3 className="text-lg font-semibold text-stone-900">Direct payment</h3>
       <p className="mt-1 text-sm text-stone-600">
         Send USDC directly. Confidential mode spends cUSDC; top up cUSDC in Confidential Wallet first.
@@ -141,7 +141,7 @@ export function DirectPaymentCard() {
           type="button"
           onClick={onPay}
           disabled={!isConnected || !walletClient || loading}
-          className={`rounded-2xl px-6 py-3 text-sm font-semibold text-white ${accent.bg} ${accent.hover} shadow-lg transition disabled:opacity-50`}
+          className="rounded-xl border border-[#d56ac7] bg-[#f7b8ee] px-5 py-2.5 text-sm font-semibold text-stone-900 shadow-md transition hover:brightness-95 disabled:opacity-50"
         >
           {loading ? "Processing..." : "Pay now"}
         </button>

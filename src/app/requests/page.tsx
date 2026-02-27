@@ -22,29 +22,29 @@ export default function RequestsPage() {
 
   return (
     <LayoutShell>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-semibold tracking-tight text-stone-900">Requests</h1>
+      <div className="mb-5 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight text-stone-900 md:text-3xl">Requests</h1>
         <Link
           href="/"
-          className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-zinc-800"
+          className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-800 shadow-sm transition hover:bg-stone-100"
         >
           Back home
         </Link>
       </div>
 
       {!isConnected ? (
-        <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
+        <div className="rounded-2xl border border-stone-200 bg-white/95 p-5">
           <p className="text-stone-600">Connect wallet to see incoming and outgoing split requests.</p>
         </div>
       ) : (
-        <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
+        <div className="rounded-2xl border border-stone-200 bg-white/95 p-5">
           <div className="mb-4 flex gap-2">
             <button
               type="button"
               onClick={() => setTab("incoming")}
               className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
                 tab === "incoming"
-                  ? "bg-black text-white"
+                  ? "border border-[#d56ac7] bg-[#f7b8ee] text-stone-900"
                   : "border border-stone-200 bg-white text-stone-700 hover:bg-stone-100"
               }`}
             >
@@ -55,7 +55,7 @@ export default function RequestsPage() {
               onClick={() => setTab("outgoing")}
               className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
                 tab === "outgoing"
-                  ? "bg-black text-white"
+                  ? "border border-[#d56ac7] bg-[#f7b8ee] text-stone-900"
                   : "border border-stone-200 bg-white text-stone-700 hover:bg-stone-100"
               }`}
             >

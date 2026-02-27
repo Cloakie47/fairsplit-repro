@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useChainTheme, CHAIN_GRADIENTS, CHAIN_ACCENT } from "@/lib/theme";
 import { WalletConnectSafe } from "./WalletConnectSafe";
 import { ProfileSetup } from "./ProfileSetup";
@@ -12,10 +13,9 @@ type LayoutShellProps = {
 };
 
 export function LayoutShell({ children }: LayoutShellProps) {
+  const pathname = usePathname();
   const theme = useChainTheme();
   const [mounted, setMounted] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(false);
-  const audioContextRef = useRef<AudioContext | null>(null);
   useEffect(() => setMounted(true), []);
 
   const resolvedTheme = mounted ? theme : "neutral";
@@ -30,44 +30,26 @@ export function LayoutShell({ children }: LayoutShellProps) {
       ? "bg-[radial-gradient(circle_at_12%_10%,rgba(249,115,22,0.44),transparent_48%),radial-gradient(circle_at_88%_8%,rgba(251,191,36,0.35),transparent_40%)]"
       : "bg-[radial-gradient(circle_at_12%_10%,rgba(120,113,108,0.2),transparent_44%),radial-gradient(circle_at_88%_8%,rgba(120,113,108,0.14),transparent_36%)]";
 
-  const playClick = () => {
-    if (!soundEnabled || typeof window === "undefined") return;
-    const AudioCtx = window.AudioContext;
-    if (!AudioCtx) return;
-    if (!audioContextRef.current || audioContextRef.current.state === "closed") {
-      audioContextRef.current = new AudioCtx();
-    }
-    const audioContext = audioContextRef.current;
-    if (!audioContext) return;
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    oscillator.type = "triangle";
-    oscillator.frequency.value = 520;
-    gainNode.gain.value = 0.015;
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    oscillator.start();
-    oscillator.stop(audioContext.currentTime + 0.035);
-  };
+  const primaryNav = [
+    { href: "/", label: "Dashboard" },
+    { href: "/profile", label: "Profile" },
+    { href: "/confidential", label: "Confidential Wallet" },
+    { href: "/create-bill", label: "Create Bill" },
+    { href: "/requests", label: "Requests" },
+    { href: "/activity", label: "Activity" },
+    { href: "/friends", label: "Friends" },
+  ];
 
-  const onShellClickCapture = (event: React.MouseEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement | null;
-    if (!target) return;
-    if (target.closest("button,[role='button'],a.nav-pill")) {
-      playClick();
-    }
-  };
+  const navItemClass = (isActive: boolean) =>
+    `sidebar-link ${isActive ? "sidebar-link-active" : ""}`;
 
   return (
-    <div
-      className={`relative min-h-screen overflow-hidden bg-gradient-to-br ${gradient} transition-all duration-500`}
-      onClickCapture={onShellClickCapture}
-    >
+    <div className={`relative min-h-screen overflow-hidden bg-gradient-to-br ${gradient} transition-all duration-500`}>
       <div className={`pointer-events-none absolute inset-0 opacity-95 ${chainAura} transition-all duration-500`} />
       <div
         className={`pointer-events-none absolute -right-20 top-10 h-56 w-56 rounded-full ${accent.light} opacity-45 blur-2xl transition-all duration-500`}
       />
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 hidden overflow-hidden md:block">
         <span
           className={`dandelion-seed seed-one ${resolvedTheme === "blue" ? "seed-blue" : resolvedTheme === "orange" ? "seed-orange" : "seed-neutral"}`}
         />
@@ -87,60 +69,72 @@ export function LayoutShell({ children }: LayoutShellProps) {
           className={`dandelion-seed seed-six ${resolvedTheme === "blue" ? "seed-blue" : resolvedTheme === "orange" ? "seed-orange" : "seed-neutral"}`}
         />
       </div>
-      <header className="header-shell">
-        <div className="mx-auto max-w-6xl px-5 py-4">
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-3">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r border-white/10 bg-[#0b0b0b] text-white md:flex">
+        <div className="border-b border-white/10 px-5 py-5">
+          <Link href="/" className="text-2xl font-semibold tracking-tight text-white">
+            FairSplit
+          </Link>
+          <p className="mt-1 text-xs font-medium uppercase tracking-[0.14em] text-white/55">
+            {chainLabel}
+          </p>
+        </div>
+        <nav className="flex flex-1 flex-col gap-2 px-3 py-4">
+          {primaryNav.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link key={item.href} href={item.href} className={navItemClass(isActive)}>
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+      </aside>
+
+      <div className="relative z-10 pb-10 md:pl-56">
+        <header className="header-shell">
+          <div className="px-5 py-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-end">
+              <div className="flex items-center gap-3 md:hidden">
                 <Link
                   href="/"
-                  className={`text-3xl font-semibold tracking-tight leading-none ${accent.text} transition-colors md:text-4xl`}
+                  className={`text-3xl font-semibold tracking-tight leading-none ${accent.text} transition-colors`}
                 >
                   FairSplit
                 </Link>
                 <span
-                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${accent.border} ${accent.text} bg-white/90 shadow-sm`}
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${accent.border} ${accent.text} bg-white/90`}
                 >
                   {chainLabel}
                 </span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                <button
-                  type="button"
-                  onClick={() => setSoundEnabled((v) => !v)}
-                  className="rounded-xl border border-white/70 bg-white/82 px-4 py-2.5 text-sm font-semibold text-stone-800 shadow-sm transition hover:bg-white"
-                  aria-pressed={soundEnabled}
-                  title="Toggle button click sound"
-                >
-                  Click sound: {soundEnabled ? "On" : "Off"}
-                </button>
+              <div className="mb-2 overflow-x-auto md:hidden">
+                <div className="flex min-w-max items-center gap-2 pb-1 pr-1">
+                  {primaryNav.map((item) => {
+                    const isActive = pathname === item.href;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`nav-pill px-3.5 py-2 text-xs font-semibold ${isActive ? "ring-2 ring-white/70" : ""}`}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="ml-auto flex flex-wrap items-center gap-2 md:justify-end">
                 <NotificationBell />
                 <WalletConnectSafe accent={accent} />
               </div>
             </div>
-
-            <nav className="overflow-x-auto">
-              <div className="flex items-center gap-2 pb-1 pr-1">
-                <Link href="/confidential" className="nav-pill px-4 py-2.5 text-sm font-semibold">
-                  Confidential Wallet
-                </Link>
-                <Link href="/activity" className="nav-pill px-4 py-2.5 text-sm font-semibold">
-                  Activity
-                </Link>
-                <Link href="/requests" className="nav-pill px-4 py-2.5 text-sm font-semibold">
-                  Requests
-                </Link>
-                <Link href="/friends" className="nav-pill px-4 py-2.5 text-sm font-semibold">
-                  Friends
-                </Link>
-              </div>
-            </nav>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="relative z-10 mx-auto max-w-6xl px-5 py-10">{children}</main>
+        <main className="mx-auto w-full max-w-4xl px-5 pt-6">{children}</main>
+      </div>
       <ProfileSetup />
     </div>
   );

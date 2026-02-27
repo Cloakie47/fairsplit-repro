@@ -41,17 +41,46 @@ a[role="button"]:active {
   border-radius: 0.9rem;
   background: #0a0a0a;
   color: #fff;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
   transition:
     transform 140ms ease,
-    box-shadow 200ms ease,
     background-color 200ms ease;
 }
 
 .nav-pill:hover {
   transform: translateY(-1px);
-  box-shadow: 0 12px 22px rgba(0, 0, 0, 0.24);
   background: #1f1f1f;
+}
+
+.sidebar-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  padding: 0.65rem 0.85rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  transition:
+    transform 120ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.sidebar-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #fff;
+}
+
+.sidebar-link-active {
+  background: #f9d6f4;
+  color: #151313;
+  font-weight: 700;
+  border-color: #f9d6f4;
 }
 
 .glass-surface {
