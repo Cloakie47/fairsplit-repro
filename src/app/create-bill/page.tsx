@@ -182,7 +182,7 @@ export default function CreateBillPage() {
       </p>
 
       {!contractDeployed && (
-        <div className="mb-8 rounded-2xl border border-amber-300/80 bg-amber-50/95 p-5 shadow-sm">
+        <div className="mb-8 rounded-2xl border border-amber-300/80 bg-amber-50/95 p-5">
           <p className="font-semibold text-amber-800">
             Contract not deployed yet
           </p>
@@ -193,93 +193,113 @@ export default function CreateBillPage() {
       )}
 
       {!isConnected ? (
-        <div className="rounded-3xl border border-white/70 bg-white/85 p-8 text-center shadow-xl backdrop-blur">
+        <div className="rounded-3xl border border-white/70 bg-white/85 p-8 text-center backdrop-blur">
           <p className="text-stone-600">Connect your wallet first.</p>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
-            <label className="block text-sm font-medium text-stone-700">
-              Split name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Dinner at Mario's"
-              className={`mt-2 w-full rounded-2xl border border-stone-200 px-4 py-3 text-stone-900 placeholder:text-stone-400 ${accent.focus}`}
-            />
-          </div>
-
-          <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
-            <label className="block text-sm font-medium text-stone-700">
-              Description <span className="text-stone-400">(optional)</span>
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add details about this split..."
-              rows={2}
-              className={`mt-2 w-full resize-none rounded-2xl border border-stone-200 px-4 py-3 text-stone-900 placeholder:text-stone-400 ${accent.focus}`}
-            />
-          </div>
-
-          <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
-            <label className="block text-sm font-medium text-stone-700">
-              Custom email reminder <span className="text-stone-400">(optional)</span>
-            </label>
-            <input
-              type="text"
-              value={customReminder}
-              onChange={(e) => setCustomReminder(e.target.value)}
-              placeholder="e.g. Please pay by Friday!"
-              className={`mt-2 w-full rounded-2xl border border-stone-200 px-4 py-3 text-stone-900 placeholder:text-stone-400 ${accent.focus}`}
-            />
-          </div>
-
-          <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
-            <label className="block text-sm font-medium text-stone-700">
-              Participants
-            </label>
-            <textarea
-              value={participantsStr}
-              onChange={(e) => setParticipantsStr(e.target.value)}
-              placeholder="0x123...&#10;0x456... (one per line or comma-separated)"
-              rows={3}
-              className={`mt-2 w-full rounded-2xl border border-stone-200 px-4 py-3 font-mono text-sm text-stone-900 placeholder:text-stone-400 ${accent.focus}`}
-            />
-          </div>
-
-          <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
-            <label className="block text-sm font-medium text-stone-700">
-              Amount per person (USDC)
-            </label>
-            <input
-              type="text"
-              value={amountStr}
-              onChange={(e) => setAmountStr(e.target.value)}
-              placeholder="10.00"
-              className={`mt-2 w-full rounded-2xl border border-stone-200 px-4 py-3 text-stone-900 placeholder:text-stone-400 ${accent.focus}`}
-            />
+        <form
+          onSubmit={handleSubmit}
+          className="rounded-3xl border border-white/70 bg-white/85 p-6 backdrop-blur"
+        >
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="split-name" className="block text-sm font-medium text-stone-700">
+                Split name <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="split-name"
+                name="splitName"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Dinner at Mario's"
+                className={`mt-2 w-full rounded-2xl border border-stone-200 px-4 py-3 text-stone-900 placeholder:text-stone-400 ${accent.focus}`}
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="split-description"
+                className="block text-sm font-medium text-stone-700"
+              >
+                Description <span className="text-stone-400">(optional)</span>
+              </label>
+              <textarea
+                id="split-description"
+                name="splitDescription"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Add details about this split..."
+                rows={2}
+                className={`mt-2 w-full resize-none rounded-2xl border border-stone-200 px-4 py-3 text-stone-900 placeholder:text-stone-400 ${accent.focus}`}
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="custom-reminder"
+                className="block text-sm font-medium text-stone-700"
+              >
+                Custom email reminder <span className="text-stone-400">(optional)</span>
+              </label>
+              <input
+                id="custom-reminder"
+                name="customReminder"
+                type="text"
+                value={customReminder}
+                onChange={(e) => setCustomReminder(e.target.value)}
+                placeholder="e.g. Please pay by Friday!"
+                className={`mt-2 w-full rounded-2xl border border-stone-200 px-4 py-3 text-stone-900 placeholder:text-stone-400 ${accent.focus}`}
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="split-participants"
+                className="block text-sm font-medium text-stone-700"
+              >
+                Participants
+              </label>
+              <textarea
+                id="split-participants"
+                name="participants"
+                value={participantsStr}
+                onChange={(e) => setParticipantsStr(e.target.value)}
+                placeholder="0x123...&#10;0x456... (one per line or comma-separated)"
+                rows={6}
+                className={`mt-2 w-full rounded-2xl border border-stone-200 px-4 py-3 font-mono text-sm text-stone-900 placeholder:text-stone-400 ${accent.focus}`}
+              />
+            </div>
+            <div>
+              <label htmlFor="split-amount" className="block text-sm font-medium text-stone-700">
+                Amount per person (USDC)
+              </label>
+              <input
+                id="split-amount"
+                name="amountPerPerson"
+                type="text"
+                value={amountStr}
+                onChange={(e) => setAmountStr(e.target.value)}
+                placeholder="10.00"
+                className={`mt-2 w-full rounded-2xl border border-stone-200 px-4 py-3 text-stone-900 placeholder:text-stone-400 ${accent.focus}`}
+              />
+            </div>
           </div>
 
           {error && (
-            <p className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
+            <p className="mt-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
               {error}
             </p>
           )}
 
-          <div className="flex gap-3">
+          <div className="mt-5 flex gap-3">
             <button
               type="submit"
               disabled={loading}
-              className={`rounded-2xl px-6 py-3 text-sm font-semibold text-white ${accent.bg} ${accent.hover} shadow-lg transition disabled:opacity-50`}
+              className={`rounded-2xl px-6 py-3 text-sm font-semibold text-white ${accent.bg} ${accent.hover} transition disabled:opacity-50`}
             >
               {loading ? "Creating…" : "Create split"}
             </button>
             <Link
               href="/"
-              className="rounded-2xl bg-black px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-zinc-800"
+              className="rounded-2xl bg-black px-6 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800"
             >
               Cancel
             </Link>
