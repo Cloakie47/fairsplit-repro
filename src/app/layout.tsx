@@ -4,12 +4,26 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 const inter = Inter({ subsets: ["latin"] });
+const MINIAPP_HOME_URL = "https://fairsplit-repro.vercel.app";
+const MINIAPP_EMBED = JSON.stringify({
+  version: "1",
+  imageUrl: `${MINIAPP_HOME_URL}/api/miniapp/hero`,
+  button: {
+    title: "Open FairSplit",
+    action: {
+      type: "launch_frame",
+      name: "Launch FairSplit",
+      url: MINIAPP_HOME_URL,
+    },
+  },
+});
 
 export const metadata: Metadata = {
   title: "FairSplit — Bill Splitting",
   description: "Split bills with on-chain settlement",
   other: {
     "base:app_id": "69a3163abe742ec8a785b4f4",
+    "fc:miniapp": MINIAPP_EMBED,
   },
 };
 
