@@ -111,6 +111,15 @@ export function LayoutShell({ children }: LayoutShellProps) {
                 </span>
               </div>
 
+              <div className="md:ml-auto md:flex md:flex-wrap md:items-center md:gap-2 md:justify-end">
+                <div className="flex w-full items-start gap-2 md:w-auto md:items-center">
+                  <NotificationBell />
+                  <div className="min-w-0 flex-1 md:flex-none">
+                    <WalletConnectSafe accent={accent} />
+                  </div>
+                </div>
+              </div>
+
               <div className="mb-2 overflow-x-auto md:hidden">
                 <label className="sr-only" htmlFor="mobile-nav">
                   Navigate
@@ -134,11 +143,6 @@ export function LayoutShell({ children }: LayoutShellProps) {
                     ))}
                   </select>
                 </div>
-              </div>
-
-              <div className="ml-auto flex flex-wrap items-center gap-2 md:justify-end">
-                <NotificationBell />
-                <WalletConnectSafe accent={accent} />
               </div>
             </div>
           </div>

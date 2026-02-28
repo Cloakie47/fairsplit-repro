@@ -66,7 +66,7 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
   if (isConnected && address) {
     if (isMobile) {
       return (
-        <div className="flex w-full flex-col items-stretch gap-2">
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
           {!isBase && !isArc && switchChain && (
             <button
               onClick={() => switchChain({ chainId: SUPPORTED_CHAINS.baseSepolia.id })}
@@ -90,7 +90,7 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
           </div>
           <button
             onClick={() => disconnect()}
-            className="h-9 rounded-xl border border-stone-300 bg-white px-3 text-xs font-semibold text-stone-800 transition hover:bg-stone-100"
+            className="h-9 self-end rounded-xl border border-stone-300 bg-white px-3 text-xs font-semibold text-stone-800 transition hover:bg-stone-100"
           >
             Disconnect
           </button>
