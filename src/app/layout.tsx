@@ -8,6 +8,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "FairSplit — Bill Splitting",
   description: "Split bills with on-chain settlement",
+  other: {
+    "base:app_id": "69a3163abe742ec8a785b4f4",
+  },
 };
 
 export default function RootLayout({
