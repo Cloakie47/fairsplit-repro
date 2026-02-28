@@ -23,8 +23,8 @@ export function WalletConnectSafe({ accent = CHAIN_ACCENT.neutral }: Props) {
   if (!mounted) {
     return (
       <div
-        className="h-12 w-40 rounded-2xl bg-black/10"
-        style={{ minWidth: 160 }}
+        className="h-10 w-28 rounded-xl bg-black/10 md:h-12 md:w-40 md:rounded-2xl"
+        style={{ minWidth: 112 }}
         aria-hidden
       />
     );

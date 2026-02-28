@@ -23,6 +23,7 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   const truncate = (addr: string) =>
     `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -45,6 +46,14 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
     };
   }, [address]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sync = () => setIsMobile(window.matchMedia("(max-width: 767px)").matches);
+    sync();
+    window.addEventListener("resize", sync);
+    return () => window.removeEventListener("resize", sync);
+  }, []);
+
   const isBase = chainId === SUPPORTED_CHAINS.baseSepolia.id;
   const isArc = chainId === SUPPORTED_CHAINS.arcTestnet.id;
 
@@ -55,6 +64,40 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
     connectors[0];
 
   if (isConnected && address) {
+    if (isMobile) {
+      return (
+        <div className="flex w-full flex-col items-stretch gap-2">
+          {!isBase && !isArc && switchChain && (
+            <button
+              onClick={() => switchChain({ chainId: SUPPORTED_CHAINS.baseSepolia.id })}
+              className="h-9 rounded-xl border border-stone-300 bg-white px-3 text-xs font-semibold text-stone-800 transition hover:bg-stone-100"
+            >
+              Switch to Base
+            </button>
+          )}
+          <div className="flex h-10 items-center justify-between gap-2 rounded-xl border border-stone-300 bg-white px-3">
+            <select
+              value={chainId ?? ""}
+              onChange={(e) => switchChain?.({ chainId: Number(e.target.value) })}
+              className="h-full min-w-0 border-0 bg-transparent text-sm font-semibold text-stone-800 focus:outline-none"
+            >
+              <option value={SUPPORTED_CHAINS.baseSepolia.id}>Base</option>
+              <option value={SUPPORTED_CHAINS.arcTestnet.id}>Arc</option>
+            </select>
+            <span className="max-w-[10.5rem] truncate border-l border-stone-200 pl-3 text-sm font-semibold text-stone-700">
+              {displayName ?? truncate(address)}
+            </span>
+          </div>
+          <button
+            onClick={() => disconnect()}
+            className="h-9 rounded-xl border border-stone-300 bg-white px-3 text-xs font-semibold text-stone-800 transition hover:bg-stone-100"
+          >
+            Disconnect
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-wrap items-center justify-end gap-2">
         {!isBase && !isArc && switchChain && (
@@ -103,7 +146,7 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
       type="button"
       onClick={() => connect({ connector: preferredConnector })}
       disabled={isPending}
-      className="nav-pill px-8 py-3.5 text-base font-bold disabled:opacity-60"
+      className="nav-pill h-10 px-5 text-sm font-bold disabled:opacity-60 md:px-8 md:py-3.5 md:text-base"
     >
       {isPending ? "Connecting…" : "Connect Wallet"}
     </button>

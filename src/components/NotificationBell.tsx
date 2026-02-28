@@ -16,7 +16,7 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [tick, setTick] = useState(0);
   const [mounted, setMounted] = useState(false);
-  const [panelStyle, setPanelStyle] = useState<{ top: number; left: number } | null>(
+  const [panelStyle, setPanelStyle] = useState<{ top: number; left: number; width: number } | null>(
     null
   );
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -35,13 +35,13 @@ export function NotificationBell() {
     const updatePosition = () => {
       if (!buttonRef.current) return;
       const rect = buttonRef.current.getBoundingClientRect();
-      const panelWidth = 384;
+      const panelWidth = Math.min(384, Math.max(280, window.innerWidth - 24));
       const margin = 12;
       const left = Math.max(
         margin,
         Math.min(window.innerWidth - panelWidth - margin, rect.right - panelWidth)
       );
-      setPanelStyle({ top: rect.bottom + 8, left });
+      setPanelStyle({ top: rect.bottom + 8, left, width: panelWidth });
     };
     updatePosition();
     window.addEventListener("resize", updatePosition);
@@ -76,7 +76,7 @@ export function NotificationBell() {
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="nav-pill relative px-4 py-2.5 text-sm font-semibold"
+        className="nav-pill relative h-9 px-3 text-xs font-semibold md:h-auto md:px-4 md:py-2.5 md:text-sm"
       >
         Alerts
         {unread > 0 && (
@@ -91,8 +91,8 @@ export function NotificationBell() {
         panelStyle &&
         createPortal(
           <div
-            className="fixed z-[220] w-96 rounded-2xl border border-stone-200 bg-white p-3"
-            style={{ top: panelStyle.top, left: panelStyle.left }}
+            className="fixed z-[220] rounded-2xl border border-stone-200 bg-white p-3"
+            style={{ top: panelStyle.top, left: panelStyle.left, width: panelStyle.width }}
           >
             <div className="mb-2 flex items-center justify-between">
               <p className="text-sm font-semibold text-stone-900">Notifications</p>

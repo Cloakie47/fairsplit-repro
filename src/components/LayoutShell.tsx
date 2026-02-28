@@ -44,6 +44,7 @@ export function LayoutShell({ children }: LayoutShellProps) {
 
   const navItemClass = (isActive: boolean) =>
     `sidebar-link ${isActive ? "sidebar-link-active" : ""}`;
+  const selectedMobileNav = primaryNav.find((item) => item.href === pathname)?.href ?? "";
 
   return (
     <div className={`relative min-h-screen overflow-hidden bg-gradient-to-br ${gradient} transition-all duration-500`}>
@@ -117,10 +118,15 @@ export function LayoutShell({ children }: LayoutShellProps) {
                 <div className="rounded-xl border border-stone-200 bg-white/90 p-1.5">
                   <select
                     id="mobile-nav"
-                    value={primaryNav.some((item) => item.href === pathname) ? pathname : "/app"}
-                    onChange={(e) => router.push(e.target.value)}
+                    value={selectedMobileNav}
+                    onChange={(e) => {
+                      if (e.target.value) router.push(e.target.value);
+                    }}
                     className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 outline-none focus:ring-2 focus:ring-stone-300"
                   >
+                    <option value="" disabled>
+                      Navigate to...
+                    </option>
                     {primaryNav.map((item) => (
                       <option key={item.href} value={item.href}>
                         {item.label}
