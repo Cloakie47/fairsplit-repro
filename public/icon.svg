@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="FairSplit icon">
+  <rect width="1024" height="1024" rx="220" fill="#0b0b0b" />
+  <circle cx="512" cy="512" r="292" fill="#f7b8ee" />
+  <path d="M402 442h220v54H456v84h138v54H456v110h-54V442z" fill="#151313" />
+</svg>

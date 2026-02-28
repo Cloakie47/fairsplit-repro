@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="FairSplit hero">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b0b0b" />
+      <stop offset="100%" stop-color="#1d1a1d" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g)" />
+  <rect x="70" y="88" width="1060" height="454" rx="34" fill="#ffffff" opacity="0.92" />
+  <text x="130" y="220" font-size="64" font-family="Inter, Arial, sans-serif" font-weight="700" fill="#151313">FairSplit</text>
+  <text x="130" y="282" font-size="34" font-family="Inter, Arial, sans-serif" fill="#3a353a">Split bills and settle with USDC</text>
+  <rect x="130" y="336" width="340" height="72" rx="20" fill="#f7b8ee" />
+  <text x="300" y="382" text-anchor="middle" font-size="30" font-family="Inter, Arial, sans-serif" font-weight="700" fill="#151313">Create split</text>
+</svg>

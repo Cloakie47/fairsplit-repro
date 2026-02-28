@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1290" height="2796" viewBox="0 0 1290 2796" role="img" aria-label="FairSplit screenshot">
+  <rect width="1290" height="2796" fill="#f3f0f3" />
+  <rect x="88" y="96" width="1114" height="2604" rx="48" fill="#ffffff" />
+  <text x="160" y="220" font-size="66" font-family="Inter, Arial, sans-serif" font-weight="700" fill="#151313">FairSplit</text>
+  <rect x="160" y="296" width="970" height="210" rx="28" fill="#f8f7f8" />
+  <rect x="160" y="550" width="970" height="360" rx="28" fill="#f8f7f8" />
+  <rect x="160" y="952" width="970" height="360" rx="28" fill="#f8f7f8" />
+  <rect x="160" y="1354" width="970" height="360" rx="28" fill="#f8f7f8" />
+  <rect x="160" y="1760" width="420" height="96" rx="24" fill="#f7b8ee" />
+  <text x="370" y="1822" text-anchor="middle" font-size="40" font-family="Inter, Arial, sans-serif" font-weight="700" fill="#151313">Create split</text>
+</svg>

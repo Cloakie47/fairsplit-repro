@@ -1,0 +1,32 @@
+{
+  "accountAssociation": {
+    "header": "",
+    "payload": "",
+    "signature": ""
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "FairSplit",
+    "homeUrl": "https://fairsplit-repro.vercel.app",
+    "iconUrl": "https://fairsplit-repro.vercel.app/icon.svg",
+    "splashImageUrl": "https://fairsplit-repro.vercel.app/splash.svg",
+    "splashBackgroundColor": "#0b0b0b",
+    "subtitle": "Split with friends",
+    "description": "Create and settle USDC bill splits with normal and confidential payment flows.",
+    "primaryCategory": "finance",
+    "tags": [
+      "finance",
+      "payments",
+      "splits"
+    ],
+    "tagline": "Split bills onchain",
+    "heroImageUrl": "https://fairsplit-repro.vercel.app/hero.svg",
+    "screenshotUrls": [
+      "https://fairsplit-repro.vercel.app/screenshot-1.svg"
+    ],
+    "ogTitle": "FairSplit",
+    "ogDescription": "Split bills and settle with USDC.",
+    "ogImageUrl": "https://fairsplit-repro.vercel.app/hero.svg",
+    "noindex": true
+  }
+}
