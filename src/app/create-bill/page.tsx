@@ -15,6 +15,7 @@ import { walletClientToSigner } from "@/lib/wallet";
 import { getFriendByAddress, getFriendEmail } from "@/lib/friends";
 import { getProfile } from "@/lib/profile";
 import { addNotification } from "@/lib/notifications";
+import { showSuccessToast } from "@/lib/toast";
 import { ethers } from "ethers";
 
 export default function CreateBillPage() {
@@ -159,8 +160,10 @@ export default function CreateBillPage() {
       logActivity(
         "bill_created",
         "Split created",
-        `${name.trim()} · ${participants.length} participant(s) · ${amountStr} USDC`
+        `${name.trim()} · ${participants.length} participant(s) · ${amountStr} USDC`,
+        { chainId, txHash: tx.hash as string, billId }
       );
+      showSuccessToast("Split created", `${participants.length} participant(s) added`);
       router.push(`/bill/${billId}`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to create bill";
@@ -298,7 +301,7 @@ export default function CreateBillPage() {
               {loading ? "Creating…" : "Create split"}
             </button>
             <Link
-              href="/"
+              href="/app"
               className="rounded-2xl bg-black px-6 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800"
             >
               Cancel

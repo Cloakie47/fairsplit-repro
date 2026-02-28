@@ -66,7 +66,7 @@ export function PaymentForm({
   };
 
   return (
-    <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
+    <div className="rounded-3xl border border-white/70 bg-white/85 p-6 backdrop-blur">
       <h3 className="text-lg font-semibold text-stone-900">Pay your share</h3>
       <div className="mt-4 flex gap-6">
         <label className="flex cursor-pointer items-center gap-2">
@@ -113,7 +113,7 @@ export function PaymentForm({
       <button
         onClick={handlePay}
         disabled={loading}
-        className={`mt-5 rounded-2xl px-6 py-3 text-sm font-semibold text-white ${accent.bg} ${accent.hover} shadow-lg transition disabled:opacity-50`}
+        className={`mt-5 rounded-2xl px-6 py-3 text-sm font-semibold text-white ${accent.bg} ${accent.hover} transition disabled:opacity-50`}
       >
         {loading ? "Processing…" : "Pay"}
       </button>

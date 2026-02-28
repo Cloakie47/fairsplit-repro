@@ -54,7 +54,7 @@ export function ProfileSetup() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="w-full max-w-md rounded-3xl border border-white/70 bg-white p-7 shadow-2xl">
+      <div className="w-full max-w-md rounded-3xl border border-white/70 bg-white p-7">
         <h3 className="text-lg font-semibold text-stone-900">
           Complete your profile
         </h3>
@@ -101,13 +101,13 @@ export function ProfileSetup() {
         <div className="mt-6 flex gap-3">
           <button
             onClick={handleSave}
-            className={`rounded-2xl px-5 py-2.5 text-sm font-semibold text-white ${accent.bg} ${accent.hover} shadow-md transition`}
+            className={`rounded-2xl px-5 py-2.5 text-sm font-semibold text-white ${accent.bg} ${accent.hover} transition`}
           >
             {saved ? "Saved" : "Save"}
           </button>
           <button
             onClick={handleSkip}
-            className="rounded-2xl bg-black px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-zinc-800"
+            className="rounded-2xl bg-black px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800"
           >
             Skip
           </button>

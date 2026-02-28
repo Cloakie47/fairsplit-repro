@@ -30,8 +30,9 @@ export async function transferUsdc(
   to: string,
   amount: bigint,
   signer: ethers.Signer
-) {
+): Promise<string> {
   const usdc = getUsdcContract(usdcAddress, signer);
   const tx = await usdc.transfer(to, amount);
   await tx.wait();
+  return tx.hash as string;
 }

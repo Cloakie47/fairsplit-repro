@@ -91,7 +91,7 @@ export function NotificationBell() {
         panelStyle &&
         createPortal(
           <div
-            className="fixed z-[220] w-96 rounded-2xl border border-stone-200 bg-white p-3 shadow-2xl"
+            className="fixed z-[220] w-96 rounded-2xl border border-stone-200 bg-white p-3"
             style={{ top: panelStyle.top, left: panelStyle.left }}
           >
             <div className="mb-2 flex items-center justify-between">

@@ -17,6 +17,8 @@ import {
 } from "@/lib/stabletrust";
 import { logActivity } from "@/lib/activity";
 import { markSplitRequestPaid } from "@/lib/requests";
+import { showSuccessToast } from "@/lib/toast";
+import { getChainLabel } from "@/lib/explorer";
 import { ethers } from "ethers";
 import { walletClientToSigner } from "@/lib/wallet";
 
@@ -109,8 +111,10 @@ export default function BillDetailPage() {
       logActivity(
         "bill_paid_normal",
         "Bill paid (normal)",
-        `${ethers.formatUnits(bill.amountPerParticipant, 6)} USDC for ${bill.name}`
+        `${ethers.formatUnits(bill.amountPerParticipant, 6)} USDC for ${bill.name}`,
+        { chainId, txHash: tx.hash as string, billId }
       );
+      showSuccessToast("Payment successful", "Normal USDC payment confirmed");
       router.refresh();
       setStatuses((prev) =>
         prev.map((s, i) =>
@@ -141,7 +145,7 @@ export default function BillDetailPage() {
       );
       setPaymentStatus("Preflight complete. Opening wallet...");
 
-      await performConfidentialPayment(
+      const confidentialTransferHash = await performConfidentialPayment(
         signer,
         bill.creator,
         bill.usdcToken,
@@ -162,6 +166,7 @@ export default function BillDetailPage() {
       );
 
       let markedOnChain = false;
+      let markTxHash: string | undefined;
       const isArcCreatorOnlyPath =
         chainId === SUPPORTED_CHAINS.arcTestnet.id &&
         address.toLowerCase() !== bill.creator.toLowerCase();
@@ -172,6 +177,7 @@ export default function BillDetailPage() {
       } else {
         try {
           const tx = await contract.markPaidConfidential(billId, address);
+          markTxHash = tx.hash as string;
           setPaymentStatus("Confirming confidential bill status on contract...");
           await tx.wait();
           markedOnChain = true;
@@ -201,8 +207,10 @@ export default function BillDetailPage() {
       logActivity(
         "bill_paid_confidential",
         "Bill paid (confidential)",
-        `${ethers.formatUnits(bill.amountPerParticipant, 6)} USDC confidential for ${bill.name}`
+        `${ethers.formatUnits(bill.amountPerParticipant, 6)} USDC confidential for ${bill.name}`,
+        { chainId, txHash: markTxHash ?? confidentialTransferHash, billId }
       );
+      showSuccessToast("Payment successful", "Confidential payment submitted");
       if (markedOnChain) {
         router.refresh();
       }
@@ -247,8 +255,8 @@ export default function BillDetailPage() {
   return (
     <LayoutShell>
       <Link
-        href="/"
-        className="mb-5 inline-block rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-zinc-800"
+        href="/app"
+        className="mb-5 inline-block rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
       >
         ← Back
       </Link>
@@ -259,14 +267,21 @@ export default function BillDetailPage() {
         <p className="text-red-600">{error ?? "Bill not found."}</p>
       ) : (
         <div className="space-y-6">
-          <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
-            <h2 className="text-3xl font-semibold tracking-tight text-stone-900">{bill.name}</h2>
+          <div className="rounded-3xl border border-white/70 bg-white/85 p-6 backdrop-blur">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-3xl font-semibold tracking-tight text-stone-900">{bill.name}</h2>
+              {chainId && (
+                <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-700">
+                  {getChainLabel(chainId)}
+                </span>
+              )}
+            </div>
             {bill.description && (
               <p className="mt-2 text-base text-stone-600">{bill.description}</p>
             )}
           </div>
 
-          <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-xl backdrop-blur">
+          <div className="rounded-3xl border border-white/70 bg-white/85 p-6 backdrop-blur">
             <p className="text-sm text-stone-500">Amount per person</p>
             <p className="text-2xl font-semibold text-stone-900">{amountFormatted}</p>
           </div>

@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useChainTheme, CHAIN_GRADIENTS, CHAIN_ACCENT } from "@/lib/theme";
 import { WalletConnectSafe } from "./WalletConnectSafe";
 import { ProfileSetup } from "./ProfileSetup";
 import { NotificationBell } from "./NotificationBell";
+import { ToastHost } from "./ToastHost";
 
 type LayoutShellProps = {
   children: React.ReactNode;
@@ -14,6 +15,7 @@ type LayoutShellProps = {
 
 export function LayoutShell({ children }: LayoutShellProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const theme = useChainTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -31,13 +33,13 @@ export function LayoutShell({ children }: LayoutShellProps) {
       : "bg-[radial-gradient(circle_at_12%_10%,rgba(120,113,108,0.2),transparent_44%),radial-gradient(circle_at_88%_8%,rgba(120,113,108,0.14),transparent_36%)]";
 
   const primaryNav = [
-    { href: "/", label: "Dashboard" },
-    { href: "/profile", label: "Profile" },
-    { href: "/confidential", label: "Confidential Wallet" },
     { href: "/create-bill", label: "Create Bill" },
-    { href: "/requests", label: "Requests" },
+    { href: "/confidential", label: "Confidential Wallet" },
     { href: "/activity", label: "Activity" },
+    { href: "/app", label: "Pay now" },
+    { href: "/requests", label: "Requests" },
     { href: "/friends", label: "Friends" },
+    { href: "/profile", label: "Profile" },
   ];
 
   const navItemClass = (isActive: boolean) =>
@@ -71,7 +73,7 @@ export function LayoutShell({ children }: LayoutShellProps) {
       </div>
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r border-white/10 bg-[#0b0b0b] text-white md:flex">
         <div className="border-b border-white/10 px-5 py-5">
-          <Link href="/" className="text-2xl font-semibold tracking-tight text-white">
+          <Link href="/app" className="text-2xl font-semibold tracking-tight text-white">
             FairSplit
           </Link>
           <p className="mt-1 text-xs font-medium uppercase tracking-[0.14em] text-white/55">
@@ -96,7 +98,7 @@ export function LayoutShell({ children }: LayoutShellProps) {
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-end">
               <div className="flex items-center gap-3 md:hidden">
                 <Link
-                  href="/"
+                  href="/app"
                   className={`text-3xl font-semibold tracking-tight leading-none ${accent.text} transition-colors`}
                 >
                   FairSplit
@@ -109,19 +111,22 @@ export function LayoutShell({ children }: LayoutShellProps) {
               </div>
 
               <div className="mb-2 overflow-x-auto md:hidden">
-                <div className="flex min-w-max items-center gap-2 pb-1 pr-1">
-                  {primaryNav.map((item) => {
-                    const isActive = pathname === item.href;
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`nav-pill px-3.5 py-2 text-xs font-semibold ${isActive ? "ring-2 ring-white/70" : ""}`}
-                      >
+                <label className="sr-only" htmlFor="mobile-nav">
+                  Navigate
+                </label>
+                <div className="rounded-xl border border-stone-200 bg-white/90 p-1.5">
+                  <select
+                    id="mobile-nav"
+                    value={primaryNav.some((item) => item.href === pathname) ? pathname : "/app"}
+                    onChange={(e) => router.push(e.target.value)}
+                    className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 outline-none focus:ring-2 focus:ring-stone-300"
+                  >
+                    {primaryNav.map((item) => (
+                      <option key={item.href} value={item.href}>
                         {item.label}
-                      </Link>
-                    );
-                  })}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -136,6 +141,7 @@ export function LayoutShell({ children }: LayoutShellProps) {
         <main className="mx-auto w-full max-w-4xl px-5 pt-6">{children}</main>
       </div>
       <ProfileSetup />
+      <ToastHost />
     </div>
   );
 }

@@ -12,6 +12,7 @@ import {
 } from "@/lib/stabletrust";
 import { logActivity } from "@/lib/activity";
 import { walletClientToSigner } from "@/lib/wallet";
+import { showSuccessToast } from "@/lib/toast";
 
 export function DirectPaymentCard() {
   const { isConnected } = useAccount();
@@ -42,12 +43,14 @@ export function DirectPaymentCard() {
 
       if (mode === "normal") {
         setStage("Sending normal payment...");
-        await transferUsdc(usdc, recipient, amountRaw, signer);
+        const txHash = await transferUsdc(usdc, recipient, amountRaw, signer);
         logActivity(
           "direct_paid_normal",
           "Direct payment sent",
-          `${ethers.formatUnits(amountRaw, 6)} USDC to ${recipient}`
+          `${ethers.formatUnits(amountRaw, 6)} USDC to ${recipient}`,
+          { chainId, txHash }
         );
+        showSuccessToast("Payment successful", "Direct USDC transfer confirmed");
         setMessage("Direct payment sent.");
       } else {
         setStage("Running confidential preflight checks...");
@@ -59,7 +62,7 @@ export function DirectPaymentCard() {
           chainId
         );
         setStage("Preflight complete. Opening wallet...");
-        await performConfidentialPayment(
+        const txHash = await performConfidentialPayment(
           signer,
           recipient,
           usdc,
@@ -81,8 +84,10 @@ export function DirectPaymentCard() {
         logActivity(
           "direct_paid_confidential",
           "Confidential direct payment submitted",
-          `${ethers.formatUnits(amountRaw, 6)} USDC (confidential)`
+          `${ethers.formatUnits(amountRaw, 6)} USDC (confidential)`,
+          { chainId, txHash }
         );
+        showSuccessToast("Payment successful", "Confidential transfer submitted");
         setMessage("Confidential payment submitted.");
       }
     } catch (e) {
@@ -141,7 +146,7 @@ export function DirectPaymentCard() {
           type="button"
           onClick={onPay}
           disabled={!isConnected || !walletClient || loading}
-          className="rounded-xl border border-[#d56ac7] bg-[#f7b8ee] px-5 py-2.5 text-sm font-semibold text-stone-900 shadow-md transition hover:brightness-95 disabled:opacity-50"
+          className="rounded-xl border border-[#d56ac7] bg-[#f7b8ee] px-5 py-2.5 text-sm font-semibold text-stone-900 transition hover:brightness-95 disabled:opacity-50"
         >
           {loading ? "Processing..." : "Pay now"}
         </button>

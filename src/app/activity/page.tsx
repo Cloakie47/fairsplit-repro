@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { LayoutShell } from "@/components/LayoutShell";
 import { ActivityType, getActivity } from "@/lib/activity";
+import { getChainLabel, getTxExplorerUrl } from "@/lib/explorer";
 
 const FILTERS: { id: "all" | ActivityType; label: string }[] = [
   { id: "all", label: "All" },
@@ -12,7 +13,9 @@ const FILTERS: { id: "all" | ActivityType; label: string }[] = [
   { id: "bill_paid_confidential", label: "Split Paid (Confidential)" },
   { id: "direct_paid_normal", label: "Direct Normal" },
   { id: "direct_paid_confidential", label: "Direct Confidential" },
+  { id: "confidential_topup_completed", label: "Top-ups" },
   { id: "confidential_withdraw_completed", label: "Withdraws" },
+  { id: "confidential_claim_completed", label: "Claims" },
 ];
 
 export default function ActivityPage() {
@@ -45,8 +48,8 @@ export default function ActivityPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-3xl font-semibold tracking-tight text-stone-900">Activity</h1>
         <Link
-          href="/"
-          className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-zinc-800"
+          href="/app"
+          className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
         >
           Back home
         </Link>
@@ -79,8 +82,29 @@ export default function ActivityPage() {
             <ul className="space-y-4">
               {pageItems.map((item) => (
               <li key={item.id} className="rounded-2xl border border-stone-200 bg-white px-4 py-3">
-                <p className="font-medium text-stone-900">{item.title}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium text-stone-900">{item.title}</p>
+                  {item.chainId && (
+                    <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-700">
+                      {getChainLabel(item.chainId)}
+                    </span>
+                  )}
+                </div>
                 {item.details && <p className="mt-1 text-sm text-stone-600">{item.details}</p>}
+                {(() => {
+                  const explorerUrl = getTxExplorerUrl(item.chainId, item.txHash);
+                  if (!explorerUrl) return null;
+                  return (
+                    <a
+                      href={explorerUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1 inline-block text-xs font-semibold text-stone-700 hover:text-stone-900"
+                    >
+                      View tx ↗
+                    </a>
+                  );
+                })()}
                 <p className="mt-1 text-xs text-stone-500">
                   {new Date(item.timestamp).toLocaleString()}
                 </p>

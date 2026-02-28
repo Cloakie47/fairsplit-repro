@@ -6,6 +6,7 @@ import Link from "next/link";
 import { LayoutShell } from "@/components/LayoutShell";
 import { FriendName } from "@/components/FriendName";
 import { getIncomingRequests, getOutgoingRequests } from "@/lib/requests";
+import { getChainLabel } from "@/lib/explorer";
 
 export default function RequestsPage() {
   const { address, isConnected } = useAccount();
@@ -25,8 +26,8 @@ export default function RequestsPage() {
       <div className="mb-5 flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight text-stone-900 md:text-3xl">Requests</h1>
         <Link
-          href="/"
-          className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-800 shadow-sm transition hover:bg-stone-100"
+          href="/app"
+          className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-800 transition hover:bg-stone-100"
         >
           Back home
         </Link>
@@ -74,7 +75,12 @@ export default function RequestsPage() {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="font-medium text-stone-900">{item.splitName}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium text-stone-900">{item.splitName}</p>
+                        <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-700">
+                          {getChainLabel(item.chainId)}
+                        </span>
+                      </div>
                       <p className="mt-1 text-xs text-stone-600">
                         {tab === "incoming" ? "From " : "To "}
                         <FriendName

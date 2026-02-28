@@ -60,12 +60,12 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
         {!isBase && !isArc && switchChain && (
           <button
             onClick={() => switchChain({ chainId: SUPPORTED_CHAINS.baseSepolia.id })}
-            className="h-10 rounded-xl border border-stone-300 bg-white px-3 text-sm font-semibold text-stone-800 shadow-sm transition hover:bg-stone-100"
+            className="h-10 rounded-xl border border-stone-300 bg-white px-3 text-sm font-semibold text-stone-800 transition hover:bg-stone-100"
           >
             Switch to Base
           </button>
         )}
-        <div className="flex h-10 items-center gap-2 rounded-xl border border-stone-300 bg-white px-3 shadow-sm">
+        <div className="flex h-10 items-center gap-2 rounded-xl border border-stone-300 bg-white px-3">
           <select
             value={chainId ?? ""}
             onChange={(e) => switchChain?.({ chainId: Number(e.target.value) })}
@@ -80,7 +80,7 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
         </div>
         <button
           onClick={() => disconnect()}
-          className="h-10 rounded-xl border border-stone-300 bg-white px-3 text-sm font-semibold text-stone-800 shadow-sm transition hover:bg-stone-100"
+          className="h-10 rounded-xl border border-stone-300 bg-white px-3 text-sm font-semibold text-stone-800 transition hover:bg-stone-100"
         >
           Disconnect
         </button>
@@ -90,7 +90,7 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
 
   if (!preferredConnector) {
     return (
-      <div className="rounded-2xl border border-amber-300/70 bg-amber-50/90 px-6 py-3 text-center shadow-sm">
+      <div className="rounded-2xl border border-amber-300/70 bg-amber-50/90 px-6 py-3 text-center">
         <p className="text-sm font-semibold text-amber-900">
           No wallet detected. Install MetaMask or another Web3 wallet.
         </p>

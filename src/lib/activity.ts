@@ -8,17 +8,28 @@ export type ActivityType =
   | "direct_paid_confidential"
   | "confidential_account_initialized"
   | "confidential_balance_refreshed"
-  | "confidential_withdraw_completed";
+  | "confidential_topup_completed"
+  | "confidential_withdraw_completed"
+  | "confidential_claim_completed";
 
 export type ActivityItem = {
   id: string;
   type: ActivityType;
   title: string;
   details?: string;
+  chainId?: number;
+  txHash?: string;
+  billId?: string;
   timestamp: number;
 };
 
 const STORAGE_KEY = "fairysplit_activity";
+
+type ActivityMeta = {
+  chainId?: number;
+  txHash?: string;
+  billId?: string;
+};
 
 export function getActivity(): ActivityItem[] {
   if (typeof window === "undefined") return [];
@@ -34,7 +45,8 @@ export function getActivity(): ActivityItem[] {
 export function logActivity(
   type: ActivityType,
   title: string,
-  details?: string
+  details?: string,
+  meta?: ActivityMeta
 ): void {
   if (typeof window === "undefined") return;
   const next: ActivityItem = {
@@ -42,6 +54,9 @@ export function logActivity(
     type,
     title,
     details,
+    chainId: meta?.chainId,
+    txHash: meta?.txHash,
+    billId: meta?.billId,
     timestamp: Date.now(),
   };
   const existing = getActivity();

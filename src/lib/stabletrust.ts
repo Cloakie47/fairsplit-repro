@@ -197,6 +197,18 @@ function asBigIntAmount(value: bigint | number | string): bigint {
   }
 }
 
+function extractTxHash(value: unknown): string | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const candidate = value as
+    | { hash?: unknown; txHash?: unknown; transactionHash?: unknown; txReceipt?: { transactionHash?: unknown } }
+    | undefined;
+  const direct = candidate?.hash ?? candidate?.txHash ?? candidate?.transactionHash;
+  if (typeof direct === "string" && direct.startsWith("0x")) return direct;
+  const fromReceipt = candidate?.txReceipt?.transactionHash;
+  if (typeof fromReceipt === "string" && fromReceipt.startsWith("0x")) return fromReceipt;
+  return undefined;
+}
+
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | null = null;
   const timeout = new Promise<never>((_, reject) => {
@@ -563,7 +575,7 @@ export async function performConfidentialPayment(
   amountRaw: bigint,
   chainId: number,
   onStatus?: StatusHandler
-): Promise<void> {
+): Promise<string | undefined> {
   if (!ethers.isAddress(recipient)) throw new Error("Recipient address is invalid.");
 
   const client = getClient(chainId);
@@ -611,7 +623,7 @@ export async function performConfidentialPayment(
     );
   }
   onStatus?.("transferring");
-  await withRetry({
+  const transferResult = await withRetry({
     label: "Confidential transfer",
     onStatus,
     retries: 0,
@@ -624,6 +636,7 @@ export async function performConfidentialPayment(
         "Confidential transfer"
       ),
   });
+  return extractTxHash(transferResult);
 }
 
 export async function depositUsdcToConfidential(
@@ -632,14 +645,14 @@ export async function depositUsdcToConfidential(
   displayAmount: string,
   chainId: number,
   onStatus?: StatusHandler
-): Promise<void> {
+): Promise<string | undefined> {
   const client = getClient(chainId);
   await ensureConfidentialAccount(signer, chainId, onStatus);
   const amountX100 = usdcDisplayToX100(displayAmount);
   await ensureStableTrustAllowance(signer, tokenAddress, chainId, amountX100, onStatus);
 
   onStatus?.("depositing");
-  await withRetry({
+  const depositResult = await withRetry({
     label: "Confidential top up",
     onStatus,
     retries: 0,
@@ -652,6 +665,49 @@ export async function depositUsdcToConfidential(
         "Confidential top up"
       ),
   });
+  return extractTxHash(depositResult);
+}
+
+export async function claimPendingConfidentialBalance(
+  signer: ethers.Signer,
+  tokenAddress: string,
+  chainId: number,
+  onStatus?: StatusHandler
+): Promise<string | undefined> {
+  const client = getClient(chainId);
+  const address = (await signer.getAddress()).toLowerCase();
+  const keys = getStoredKeys(chainId, address);
+  if (!keys) {
+    throw new Error("Initialize confidential account first.");
+  }
+  const balance = await withTimeout(
+    client.getConfidentialBalance(address, keys.privateKey, tokenAddress),
+    60000,
+    "Balance refresh"
+  );
+  const pending = asBigIntAmount(balance.pending.amount);
+  if (pending <= BigInt(0)) {
+    throw new Error("No pending cUSDC to claim.");
+  }
+
+  // Trigger state progression with a minimal top-up (0.01 USDC).
+  const microAmount = BigInt(10000);
+  await ensureStableTrustAllowance(signer, tokenAddress, chainId, microAmount, onStatus);
+  onStatus?.("depositing");
+  const claimResult = await withRetry({
+    label: "Pending claim trigger",
+    onStatus,
+    retries: 0,
+    action: () =>
+      withTimeout(
+        client.confidentialDeposit(signer, tokenAddress, toSdkAmount(microAmount), {
+          waitForFinalization: true,
+        }),
+        180000,
+        "Pending claim trigger"
+      ),
+  });
+  return extractTxHash(claimResult);
 }
 
 export async function getConfidentialBalanceSummary(
@@ -712,7 +768,7 @@ export async function withdrawConfidentialToUsdc(
   displayAmount: string,
   chainId: number,
   onStatus?: StatusHandler
-): Promise<void> {
+): Promise<string | undefined> {
   const client = getClient(chainId);
   const address = (await signer.getAddress()).toLowerCase();
   if (!getStoredKeys(chainId, address)) {
@@ -720,7 +776,7 @@ export async function withdrawConfidentialToUsdc(
   }
   const amountX100 = usdcDisplayToX100(displayAmount);
   onStatus?.("withdrawing");
-  await withRetry({
+  const withdrawResult = await withRetry({
     label: "Confidential withdraw",
     onStatus,
     retries: 0,
@@ -733,6 +789,7 @@ export async function withdrawConfidentialToUsdc(
         "Confidential withdraw"
       ),
   });
+  return extractTxHash(withdrawResult);
 }
 
 export { STABLETRUST_ADDRESSES };
