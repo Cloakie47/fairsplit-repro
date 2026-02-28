@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
 import { WagmiProvider, createConfig, http } from "wagmi";
 import { injected, metaMask } from "wagmi/connectors";
 import { defineChain } from "viem";
 import { baseSepolia } from "viem/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { sdk } from "@farcaster/miniapp-sdk";
 import { SUPPORTED_CHAINS } from "@/lib/chains";
 
 const arcTestnet = defineChain({
@@ -38,6 +40,26 @@ const config = createConfig({
 const queryClient = new QueryClient();
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    let cancelled = false;
+
+    const signalReady = async () => {
+      try {
+        await sdk.actions.ready();
+      } catch {
+        // Ignore when running outside a Farcaster/Base Mini App client.
+      }
+    };
+
+    if (!cancelled) {
+      void signalReady();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
