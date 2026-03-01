@@ -35,6 +35,13 @@ export default function ProfilePage() {
     setStatus("Profile saved.");
   };
 
+  const onClearDisplayName = () => {
+    if (!address) return;
+    createOrUpdateProfile(address, { displayName: undefined });
+    setDisplayName("");
+    setStatus("Profile name cleared.");
+  };
+
   return (
     <LayoutShell>
       <section className="mx-auto w-full max-w-xl rounded-2xl border border-stone-200 bg-white/95 p-5 md:p-6">
@@ -51,9 +58,21 @@ export default function ProfilePage() {
         ) : (
           <div className="mt-6 space-y-5">
             <div>
-              <label htmlFor="profile-display-name" className="block text-sm font-medium text-stone-700">
-                Nickname
-              </label>
+              <div className="flex items-center justify-between">
+                <label
+                  htmlFor="profile-display-name"
+                  className="block text-sm font-medium text-stone-700"
+                >
+                  Nickname
+                </label>
+                <button
+                  type="button"
+                  onClick={onClearDisplayName}
+                  className="rounded-full border border-stone-300 px-2 py-0.5 text-[11px] font-semibold text-stone-600 transition hover:bg-stone-100"
+                >
+                  Clear
+                </button>
+              </div>
               <input
                 id="profile-display-name"
                 name="profile-display-name"

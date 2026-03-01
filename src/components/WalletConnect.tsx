@@ -37,27 +37,25 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
         return;
       }
 
+      const profile = getProfile(address);
+      const localName = profile?.displayName?.trim() || null;
+      if (localName) {
+        setDisplayName(localName);
+        return;
+      }
+
       setIsResolvingName(true);
       try {
         const resolvedName = await resolveAddressToPreferredName(address, chainId);
-        if (resolvedName) {
-          setDisplayName(resolvedName);
-          return;
-        }
+        setDisplayName(resolvedName);
 
-        const profile = getProfile(address);
-        const localName = profile?.displayName?.trim() || null;
-        setDisplayName(localName);
-
-        if (allowAutoRetry && !resolvedName && !localName) {
+        if (allowAutoRetry && !resolvedName) {
           window.setTimeout(() => {
             void refreshDisplayName(false);
           }, 2500);
         }
       } catch {
-        const profile = getProfile(address);
-        const localName = profile?.displayName?.trim() || null;
-        setDisplayName(localName);
+        setDisplayName(null);
       } finally {
         setIsResolvingName(false);
       }
