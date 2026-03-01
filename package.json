@@ -12,6 +12,7 @@
     "deploy:arc": "hardhat run scripts/deploy.js --network arcTestnet"
   },
   "dependencies": {
+    "@coinbase/onchainkit": "^0.37.0",
     "@fairblock/stabletrust": "^1.0.16",
     "@farcaster/miniapp-sdk": "^0.2.3",
     "@tanstack/react-query": "^5.60.0",

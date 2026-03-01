@@ -16,6 +16,7 @@ import { getFriendByAddress, getFriendEmail } from "@/lib/friends";
 import { getProfile } from "@/lib/profile";
 import { addNotification } from "@/lib/notifications";
 import { showSuccessToast } from "@/lib/toast";
+import { parseParticipantInputs, resolveInputToAddress } from "@/lib/nameService";
 import { ethers } from "ethers";
 
 export default function CreateBillPage() {
@@ -48,20 +49,29 @@ export default function CreateBillPage() {
       const signer = await walletClientToSigner(walletClient);
       const contract = getContract(signer, chainId);
       const billId = parseBillId(name.trim() || `bill-${Date.now()}`);
-      const participants = participantsStr
-        .split(/[\s,]+/)
-        .map((s) => s.trim())
-        .filter(Boolean);
+      const participantInputs = parseParticipantInputs(participantsStr);
       const amountRaw = ethers.parseUnits(amountStr, 6);
 
       if (!name.trim()) {
         setError("Name is required.");
         return;
       }
-      if (participants.length === 0) {
-        setError("Add at least one participant address.");
+      if (participantInputs.length === 0) {
+        setError("Add at least one participant address or name.");
         return;
       }
+
+      const resolvedParticipants = await Promise.all(
+        participantInputs.map(async (input) => ({
+          input,
+          address: await resolveInputToAddress(input, chainId),
+        }))
+      );
+      const participants = Array.from(
+        new Map(
+          resolvedParticipants.map((entry) => [entry.address.toLowerCase(), entry.address])
+        ).values()
+      );
 
       const tx = await contract.createBill(
         billId,
@@ -265,7 +275,7 @@ export default function CreateBillPage() {
                 name="participants"
                 value={participantsStr}
                 onChange={(e) => setParticipantsStr(e.target.value)}
-                placeholder="0x123...&#10;0x456... (one per line or comma-separated)"
+                placeholder="0x123... or alice.base or vitalik.eth&#10;one per line or comma-separated"
                 rows={6}
                 className={`mt-2 w-full rounded-2xl border border-stone-200 px-4 py-3 font-mono text-sm text-stone-900 placeholder:text-stone-400 ${accent.focus}`}
               />

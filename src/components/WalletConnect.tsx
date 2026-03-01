@@ -9,7 +9,8 @@ import {
 import { CHAIN_ACCENT, ChainTheme } from "@/lib/theme";
 import { SUPPORTED_CHAINS } from "@/lib/chains";
 import { getProfile } from "@/lib/profile";
-import { useEffect, useState } from "react";
+import { resolveAddressToPreferredName } from "@/lib/nameService";
+import { useCallback, useEffect, useState } from "react";
 
 type Accent = (typeof CHAIN_ACCENT)[ChainTheme];
 
@@ -24,27 +25,64 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
   const { switchChain } = useSwitchChain();
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [isResolvingName, setIsResolvingName] = useState(false);
 
   const truncate = (addr: string) =>
     `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
-  useEffect(() => {
-    const refreshProfile = () => {
+  const refreshDisplayName = useCallback(
+    async (allowAutoRetry: boolean) => {
       if (!address) {
         setDisplayName(null);
         return;
       }
-      const profile = getProfile(address);
-      setDisplayName(profile?.displayName?.trim() || null);
+
+      setIsResolvingName(true);
+      try {
+        const resolvedName = await resolveAddressToPreferredName(address, chainId);
+        if (resolvedName) {
+          setDisplayName(resolvedName);
+          return;
+        }
+
+        const profile = getProfile(address);
+        const localName = profile?.displayName?.trim() || null;
+        setDisplayName(localName);
+
+        if (allowAutoRetry && !resolvedName && !localName) {
+          window.setTimeout(() => {
+            void refreshDisplayName(false);
+          }, 2500);
+        }
+      } catch {
+        const profile = getProfile(address);
+        const localName = profile?.displayName?.trim() || null;
+        setDisplayName(localName);
+      } finally {
+        setIsResolvingName(false);
+      }
+    },
+    [address, chainId]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    void refreshDisplayName(true);
+    const listener = () => {
+      if (!cancelled) {
+        void refreshDisplayName(true);
+      }
     };
-    refreshProfile();
-    window.addEventListener("fairysplit-profile-updated", refreshProfile);
-    window.addEventListener("storage", refreshProfile);
+    window.addEventListener("fairysplit-profile-updated", listener);
+    window.addEventListener("storage", listener);
+    window.addEventListener("fairysplit-resolved-name-updated", listener);
     return () => {
-      window.removeEventListener("fairysplit-profile-updated", refreshProfile);
-      window.removeEventListener("storage", refreshProfile);
+      cancelled = true;
+      window.removeEventListener("fairysplit-profile-updated", listener);
+      window.removeEventListener("storage", listener);
+      window.removeEventListener("fairysplit-resolved-name-updated", listener);
     };
-  }, [address]);
+  }, [refreshDisplayName]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -62,6 +100,20 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
     connectors.find((c) => c.id === "metaMask") ??
     connectors.find((c) => c.type === "injected") ??
     connectors[0];
+
+  const nameText = displayName ?? (address ? truncate(address) : "");
+  const refreshNameButton = (
+    <button
+      type="button"
+      onClick={() => void refreshDisplayName(false)}
+      disabled={isResolvingName}
+      aria-label="Refresh resolved name"
+      title="Refresh name"
+      className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-stone-200 text-xs text-stone-500 transition hover:bg-stone-50 hover:text-stone-700 disabled:opacity-50"
+    >
+      {isResolvingName ? "…" : "↻"}
+    </button>
+  );
 
   if (isConnected && address) {
     if (isMobile) {
@@ -84,9 +136,12 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
               <option value={SUPPORTED_CHAINS.baseSepolia.id}>Base</option>
               <option value={SUPPORTED_CHAINS.arcTestnet.id}>Arc</option>
             </select>
-            <span className="max-w-[10.5rem] truncate border-l border-stone-200 pl-3 text-sm font-semibold text-stone-700">
-              {displayName ?? truncate(address)}
-            </span>
+            <div className="flex min-w-0 items-center gap-2 border-l border-stone-200 pl-3">
+              <span className="max-w-[12.5rem] truncate text-sm font-semibold text-stone-700">
+                {nameText}
+              </span>
+              {refreshNameButton}
+            </div>
           </div>
           <button
             onClick={() => disconnect()}
@@ -117,9 +172,12 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
             <option value={SUPPORTED_CHAINS.baseSepolia.id}>Base</option>
             <option value={SUPPORTED_CHAINS.arcTestnet.id}>Arc</option>
           </select>
-          <span className="max-w-28 truncate border-l border-stone-200 pl-3 text-sm font-semibold text-stone-700">
-            {displayName ?? truncate(address)}
-          </span>
+          <div className="flex min-w-0 items-center gap-2 border-l border-stone-200 pl-3">
+            <span className="max-w-[15rem] truncate text-sm font-semibold text-stone-700">
+              {nameText}
+            </span>
+            {refreshNameButton}
+          </div>
         </div>
         <button
           onClick={() => disconnect()}
