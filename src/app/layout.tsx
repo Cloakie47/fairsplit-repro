@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ["latin"] });
 const MINIAPP_HOME_URL = "https://fairsplit-repro.vercel.app";
 const MINIAPP_EMBED = JSON.stringify({
   version: "1",
-  imageUrl: `${MINIAPP_HOME_URL}/api/miniapp/hero`,
+  imageUrl: `${MINIAPP_HOME_URL}/miniapp/hero.png`,
   button: {
     title: "Open FairSplit",
     action: {
