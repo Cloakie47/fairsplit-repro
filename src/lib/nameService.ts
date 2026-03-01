@@ -24,6 +24,7 @@ const inputToAddressCache = new Map<string, Address>();
 const addressToNameCache = new Map<string, string>();
 const RESOLVED_NAME_STORAGE_KEY = "fairysplit_resolved_names_v1";
 const RESOLVED_NAME_EVENT = "fairysplit-resolved-name-updated";
+const ARC_TESTNET_CHAIN_ID = 5042002;
 
 type ResolvedNameMap = Record<string, string>;
 
@@ -64,6 +65,11 @@ function getLocallyResolvedName(address: Address, chainId?: number): string | nu
 
 function normalizeInput(input: string): string {
   return input.trim().toLowerCase();
+}
+
+function isBasename(name: string): boolean {
+  const normalized = normalizeInput(name);
+  return normalized.endsWith(".base.eth") || normalized.endsWith(".basetest.eth");
 }
 
 function isNameLike(input: string): boolean {
@@ -223,6 +229,12 @@ export async function resolveAddressToPreferredName(
     } catch {
       resolvedName = null;
     }
+  }
+
+  // ARC rule: never display Base names on ARC.
+  // If ARC has no ENS-style name, caller should fall back to profile/address.
+  if (chainId === ARC_TESTNET_CHAIN_ID && resolvedName && isBasename(resolvedName)) {
+    resolvedName = null;
   }
 
   if (resolvedName) {

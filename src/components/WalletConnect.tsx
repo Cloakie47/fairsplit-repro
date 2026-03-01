@@ -39,6 +39,10 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
 
       const profile = getProfile(address);
       const localName = profile?.displayName?.trim() || null;
+      // Display priority contract:
+      // 1) explicit profile nickname
+      // 2) onchain resolved name (with ARC basename filtering in nameService)
+      // 3) wallet address fallback in render path
       if (localName) {
         setDisplayName(localName);
         return;
