@@ -7,6 +7,7 @@ import { defineChain } from "viem";
 import { baseSepolia } from "viem/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { sdk } from "@farcaster/miniapp-sdk";
+import { Attribution } from "ox/erc8021";
 import { SUPPORTED_CHAINS } from "@/lib/chains";
 
 const arcTestnet = defineChain({
@@ -20,6 +21,11 @@ const arcTestnet = defineChain({
     default: { name: "ArcScan", url: "https://testnet.arcscan.app" },
   },
 });
+
+const BUILDER_CODE = process.env.NEXT_PUBLIC_BASE_BUILDER_CODE;
+const DATA_SUFFIX = BUILDER_CODE
+  ? Attribution.toDataSuffix({ codes: [BUILDER_CODE] })
+  : undefined;
 
 const config = createConfig({
   chains: [baseSepolia, arcTestnet],
@@ -35,6 +41,7 @@ const config = createConfig({
     [baseSepolia.id]: http(),
     [arcTestnet.id]: http(),
   },
+  ...(DATA_SUFFIX ? { dataSuffix: DATA_SUFFIX } : {}),
 });
 
 const queryClient = new QueryClient();
