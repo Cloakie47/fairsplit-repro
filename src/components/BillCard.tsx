@@ -18,7 +18,7 @@ export function BillCard({
   return (
     <Link
       href={`/bill/${billId}`}
-      className="block rounded-xl border border-stone-200 bg-white p-4 shadow-sm transition hover:border-stone-300 hover:shadow"
+      className="block rounded-xl border border-stone-200 bg-white p-4 transition hover:border-stone-300"
     >
       <div className="font-medium text-stone-900">{name}</div>
       <div className="mt-1 text-sm text-stone-500">

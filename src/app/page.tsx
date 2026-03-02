@@ -31,22 +31,22 @@ export default function LandingHomePage() {
           <h1 className="text-2xl font-bold tracking-tight text-[#1e293b] md:text-4xl">Fairsplit</h1>
           <Link
             href="/app"
-            className="rounded-full border border-[#2563eb] bg-[#3b82f6] px-6 py-2.5 text-sm font-semibold text-white shadow-[0_10px_28px_rgba(37,99,235,0.24)] transition hover:-translate-y-0.5 hover:bg-[#2563eb] hover:shadow-[0_14px_34px_rgba(37,99,235,0.3)]"
+            className="rounded-full border border-[#2563eb] bg-[#3b82f6] px-6 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#2563eb]"
           >
-            Enter App
+            Launch App
           </Link>
         </header>
 
-        <main className="mx-auto w-full max-w-[1200px] px-6 pb-28 pt-16 md:px-10 md:pt-24">
-          <section className="landing-fade-up max-w-4xl">
+        <main className="mx-auto w-full max-w-[1200px] px-6 pb-28 pt-20 md:px-10 md:pt-32">
+          <section className="landing-fade-up max-w-6xl">
             <p className="inline-flex rounded-full border border-slate-200 bg-white/95 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.13em] text-[#1e40af]">
               USDC-FIRST SPLIT PAYMENTS
             </p>
-            <h2 className="mt-7 max-w-[900px] text-5xl font-bold leading-[1.02] tracking-tight text-[#0f172a] md:text-7xl">
+            <h2 className="mt-7 max-w-[1100px] text-5xl font-bold leading-[1.02] tracking-tight text-[#0f172a] md:text-7xl">
               Say, Hello to Fairsplit
             </h2>
             <p className="mt-5 max-w-3xl text-lg font-medium text-[#334155] md:text-[2rem] md:leading-tight">
-              Split USDC expenses. Keep privacy when you need it.
+              Split USDC. Reveal only what&apos;s required.
             </p>
             <p className="mt-5 max-w-2xl text-base leading-relaxed text-[#64748b] md:text-xl">
               Create expense splits, track who paid, send reminders, and settle on-chain with
@@ -56,9 +56,9 @@ export default function LandingHomePage() {
             <div className="mt-11">
               <Link
                 href="/app"
-                className="rounded-full border border-[#2563eb] bg-[#2563eb] px-8 py-4 text-lg font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.26)] transition hover:-translate-y-0.5 hover:bg-[#1d4ed8] hover:shadow-[0_16px_38px_rgba(29,78,216,0.34)]"
+                className="rounded-full border border-[#2563eb] bg-[#2563eb] px-8 py-4 text-lg font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#1d4ed8]"
               >
-                Enter App
+                Launch App
               </Link>
             </div>
           </section>

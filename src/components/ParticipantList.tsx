@@ -20,7 +20,7 @@ export function ParticipantList({
   amountFormatted,
 }: ParticipantListProps) {
   return (
-    <ul className="divide-y divide-stone-200 rounded-3xl border border-white/70 bg-white/85 shadow-xl backdrop-blur">
+    <ul className="divide-y divide-stone-200 rounded-3xl border border-white/70 bg-white/85 backdrop-blur">
       {participants.map((p) => (
         <li
           key={p.address}
