@@ -27,6 +27,6 @@
     "ogTitle": "FairSplit",
     "ogDescription": "Split bills and settle with USDC.",
     "ogImageUrl": "https://fairsplit-repro.vercel.app/miniapp/hero.png",
-    "noindex": true
+    "noindex": false
   }
 }
