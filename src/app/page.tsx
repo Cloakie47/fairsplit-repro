@@ -66,16 +66,26 @@ export default function LandingHomePage() {
 
         <footer className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white/92 backdrop-blur-md">
           <div className="mx-auto flex w-full max-w-[1200px] items-center justify-end gap-4 px-6 py-3 text-sm font-medium text-slate-600 md:px-10">
-            <a href="#" className="transition hover:text-[#0f172a]">
+            <a
+              href="https://www.notion.so/End-User-Guide-How-People-Use-FairSplit-3176ffa741d780ba93c5f4ae6975feac?source=copy_link"
+              target="_blank"
+              rel="noreferrer"
+              className="transition hover:text-[#0f172a]"
+            >
               How it works
             </a>
             <span className="text-slate-300">|</span>
-            <a href="#" className="transition hover:text-[#0f172a]">
+            <a
+              href="https://www.notion.so/Fairsplit-Litepaper-3176ffa741d78024badbe45e9c892a14?source=copy_link"
+              target="_blank"
+              rel="noreferrer"
+              className="transition hover:text-[#0f172a]"
+            >
               Litepaper
             </a>
             <span className="text-slate-300">|</span>
             <a
-              href="https://github.com"
+              href="https://github.com/Cloakie47/fairsplit-repro"
               target="_blank"
               rel="noreferrer"
               className="transition hover:text-[#0f172a]"
