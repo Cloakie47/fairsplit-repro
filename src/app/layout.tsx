@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   title: "FairSplit — Bill Splitting",
   description: "Split bills with on-chain settlement",
   other: {
-    "base:app_id": "69a53df76d5151991e105996",
+    "base:app_id": "69a3163abe742ec8a785b4f4",
     "fc:miniapp": MINIAPP_EMBED,
   },
 };
