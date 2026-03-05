@@ -6,12 +6,12 @@ import { Providers } from "./providers";
 const inter = Inter({ subsets: ["latin"] });
 const MINIAPP_HOME_URL = "https://fairsplit-repro.vercel.app";
 const MINIAPP_EMBED = JSON.stringify({
-  version: "1",
-  imageUrl: `${MINIAPP_HOME_URL}/miniapp/hero.png`,
+  version: "next",
+  imageUrl: `${MINIAPP_HOME_URL}/miniapp/landing-preview.png`,
   button: {
     title: "Open FairSplit",
     action: {
-      type: "launch_frame",
+      type: "launch_miniapp",
       name: "Launch FairSplit",
       url: MINIAPP_HOME_URL,
     },
