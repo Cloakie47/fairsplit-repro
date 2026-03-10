@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAccount, useChainId, useWalletClient } from "wagmi";
 import { ethers } from "ethers";
 import { useChainTheme, CHAIN_ACCENT } from "@/lib/theme";
+import { TransactionModal } from "@/components/TransactionModal";
 import {
   getDefaultTokenForChain,
   getTokensForChain,
@@ -148,6 +149,8 @@ export function DirectPaymentCard() {
   };
 
   return (
+    <>
+    <TransactionModal open={loading} stage={stage} />
     <div className="rounded-2xl border border-stone-200 bg-white/95 p-5">
       <h3 className="text-lg font-semibold text-stone-900">Direct payment</h3>
       <p className="mt-1 text-sm text-stone-600">
@@ -238,6 +241,7 @@ export function DirectPaymentCard() {
         {message && <p className="text-sm text-stone-600">{message}</p>}
       </div>
     </div>
+    </>
   );
 }
 

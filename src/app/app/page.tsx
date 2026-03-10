@@ -5,14 +5,11 @@ import { useEffect, useState } from "react";
 import { useAccount, useChainId } from "wagmi";
 import { LayoutShell } from "@/components/LayoutShell";
 import { DirectPaymentCard } from "@/components/DirectPaymentCard";
-import { SUPPORTED_CHAINS } from "@/lib/chains";
 
 export default function AppHomePage() {
   const { isConnected } = useAccount();
-  const chainId = useChainId();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const isTempo = chainId === SUPPORTED_CHAINS.tempoTestnet.id;
 
   return (
     <LayoutShell>
@@ -33,15 +30,6 @@ export default function AppHomePage() {
         </div>
       ) : (
         <>
-          {isTempo && (
-            <div className="mx-auto mb-5 max-w-2xl rounded-2xl border border-slate-300 bg-white/95 p-5">
-              <p className="text-sm font-semibold text-slate-900">Tempo dashboard preview is live</p>
-              <p className="mt-1.5 text-sm text-slate-600">
-                Wallet switching and dashboard theming are enabled on Tempo. Multi-token split creation,
-                direct transfers, and confidential balances are the next integration step.
-              </p>
-            </div>
-          )}
           <div className="mx-auto mb-5 max-w-2xl rounded-2xl border border-stone-200 bg-white/95 p-5">
             <h2 className="text-2xl font-semibold tracking-tight text-stone-900">
               Split bills with friends

@@ -23,6 +23,7 @@ import {
 } from "@/lib/stabletrust";
 import { logActivity } from "@/lib/activity";
 import { walletClientToSigner } from "@/lib/wallet";
+import { TransactionModal } from "@/components/TransactionModal";
 import { showSuccessToast } from "@/lib/toast";
 
 export default function ConfidentialPage() {
@@ -258,6 +259,7 @@ export default function ConfidentialPage() {
 
   return (
     <LayoutShell>
+      <TransactionModal open={loading} stage={stage} />
       <div className="mb-5 flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight text-stone-900 md:text-3xl">
           Confidential Wallet

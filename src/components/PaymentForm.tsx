@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useChainId } from "wagmi";
 import { useChainTheme, CHAIN_ACCENT } from "@/lib/theme";
+import { TransactionModal } from "@/components/TransactionModal";
 
 type PaymentFormProps = {
   billId: string;
@@ -70,6 +71,8 @@ export function PaymentForm({
   };
 
   return (
+    <>
+    <TransactionModal open={loading} stage={paymentStatus ?? null} />
     <div className="rounded-3xl border border-white/70 bg-white/85 p-6 backdrop-blur">
       <h3 className="text-lg font-semibold text-stone-900">Pay your share</h3>
       <div className="mt-4 flex gap-6">
@@ -122,5 +125,6 @@ export function PaymentForm({
         {loading ? "Processing…" : "Pay"}
       </button>
     </div>
+    </>
   );
 }

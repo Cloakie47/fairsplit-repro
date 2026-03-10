@@ -232,17 +232,6 @@ export default function CreateBillPage() {
         Name your split, add participants, and set the stable token amount each person owes.
       </p>
 
-      {isTempo && (
-        <div className="mb-8 rounded-2xl border border-slate-300 bg-slate-50/95 p-5">
-          <p className="font-semibold text-slate-900">Tempo integration is in progress</p>
-          <p className="mt-1 text-sm text-slate-700">
-            {contractDeployed
-              ? "Tempo BillSplitter is configured. You can create Tempo splits with the selected token."
-              : "Tempo token selection is now visible here. Set NEXT_PUBLIC_TEMPO_BILLSPLITTER_ADDRESS to enable Tempo split creation."}
-          </p>
-        </div>
-      )}
-
       {!contractDeployed && (
         <div className="mb-8 rounded-2xl border border-amber-300/80 bg-amber-50/95 p-5">
           <p className="font-semibold text-amber-800">
