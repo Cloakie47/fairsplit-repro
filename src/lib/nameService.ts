@@ -13,7 +13,8 @@ import {
   getName as onchainkitGetName,
 } from "@coinbase/onchainkit/identity";
 
-const mainnetRpc = process.env.NEXT_PUBLIC_MAINNET_RPC_URL;
+const mainnetRpc =
+  process.env.NEXT_PUBLIC_MAINNET_RPC_URL || "https://eth.llamarpc.com";
 
 const client = createPublicClient({
   chain: mainnet,
