@@ -2,7 +2,7 @@ import { ethers } from "ethers";
 // Pinata uploads API endpoint
 // Docs: https://docs.pinata.cloud
 const PINATA_UPLOAD_URL = "https://uploads.pinata.cloud/v3/files";
-const PINATA_JWT = process.env.PINATA_JWT;
+const PINATA_JWT = process.env.NEXT_PUBLIC_PINATA_JWT || process.env.PINATA_JWT;
 /**
  * Encodes the ZK-Proof data for a transfer into a format the Solidity contract expects.
  *
