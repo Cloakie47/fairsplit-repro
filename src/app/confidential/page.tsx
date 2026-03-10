@@ -314,11 +314,6 @@ export default function ConfidentialPage() {
                 {selectedToken?.symbol}
               </div>
             )}
-            {selectedToken && (
-              <p className="mt-2 text-xs text-stone-500">
-                Public token: {selectedToken.symbol} · Confidential token: {selectedToken.confidentialSymbol}
-              </p>
-            )}
           </div>
         )}
 
