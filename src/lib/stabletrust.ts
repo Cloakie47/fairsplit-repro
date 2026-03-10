@@ -14,7 +14,7 @@ import { getUsdcContract } from "@/lib/usdc";
 
 const TEMPO_STABLETRUST_ADDRESS = process.env.NEXT_PUBLIC_TEMPO_STABLETRUST_ADDRESS;
 
-const STABLETRUST_ADDRESSES: Record<number, string> = {
+const STABLETRUST_ADDRESSES = {
   84532: "0x962a8A7CD28BfFBb17C4F6Ec388782cca3ffd618", // Base testnet (current)
   1244: "0xb20aB54e1c6AE55B0DD11FEB7FFf3fF1E9631f19", // Arc canonical chain id (current deployment)
   // Arc app-chain id maps to the same canonical StableTrust deployment.
@@ -22,7 +22,7 @@ const STABLETRUST_ADDRESSES: Record<number, string> = {
   ...(TEMPO_STABLETRUST_ADDRESS && ethers.isAddress(TEMPO_STABLETRUST_ADDRESS)
     ? { 42431: TEMPO_STABLETRUST_ADDRESS }
     : {}),
-};
+} as Record<number, string>;
 
 const STABLETRUST_LEGACY_ADDRESSES: Record<number, string[]> = {
   84532: ["0x6FE45A71F5232a4E5e583Ae31A538360fB1e6aDb"],

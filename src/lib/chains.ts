@@ -113,13 +113,13 @@ export const USDC_ADDRESSES: Record<number, string> = {
   [SUPPORTED_CHAINS.arcTestnet.id]: TOKENS_BY_CHAIN[SUPPORTED_CHAINS.arcTestnet.id][0]!.address,
 };
 
-export const CONTRACT_ADDRESSES: Record<number, string> = {
+export const CONTRACT_ADDRESSES = {
   [SUPPORTED_CHAINS.baseSepolia.id]: "0xe432ed508fBF408DD022dd4b6c25b0838F175a91",
   [SUPPORTED_CHAINS.arcTestnet.id]: "0x354e80A8B972941654B79DF065F826E9AdC4F21c",
   ...(isAddressLike(TEMPO_BILLSPLITTER_ADDRESS)
     ? { [SUPPORTED_CHAINS.tempoTestnet.id]: TEMPO_BILLSPLITTER_ADDRESS }
     : {}),
-};
+} as Record<number, string>;
 
 export function isBillSplitterConfigured(chainId?: number): boolean {
   if (!chainId) return false;
