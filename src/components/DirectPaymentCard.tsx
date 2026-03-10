@@ -168,9 +168,9 @@ export function DirectPaymentCard() {
       )}
 
       <div className="mt-4 space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-stone-700">Token</label>
-          {availableTokens.length > 1 ? (
+        {availableTokens.length > 1 && (
+          <div>
+            <label className="block text-sm font-medium text-stone-700">Token</label>
             <select
               value={selectedTokenAddress}
               onChange={(e) => setSelectedTokenAddress(e.target.value)}
@@ -182,12 +182,8 @@ export function DirectPaymentCard() {
                 </option>
               ))}
             </select>
-          ) : (
-            <div className="mt-2 inline-flex rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-sm font-semibold text-stone-700">
-              {selectedToken?.symbol}
-            </div>
-          )}
-        </div>
+          </div>
+        )}
         <div>
           <label className="block text-sm font-medium text-stone-700">Recipient wallet</label>
           <input
