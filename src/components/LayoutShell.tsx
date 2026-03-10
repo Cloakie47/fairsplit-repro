@@ -24,13 +24,27 @@ export function LayoutShell({ children }: LayoutShellProps) {
   const gradient = CHAIN_GRADIENTS[resolvedTheme];
   const accent = CHAIN_ACCENT[resolvedTheme];
   const chainLabel =
-    resolvedTheme === "blue" ? "Base" : resolvedTheme === "orange" ? "Arc" : "Network";
+    resolvedTheme === "blue"
+      ? "Base"
+      : resolvedTheme === "orange"
+      ? "Arc"
+      : resolvedTheme === "tempo"
+      ? "Tempo"
+      : "Network";
   const chainAura =
     resolvedTheme === "blue"
       ? "bg-[radial-gradient(circle_at_12%_10%,rgba(37,99,235,0.44),transparent_48%),radial-gradient(circle_at_88%_8%,rgba(96,165,250,0.35),transparent_40%)]"
       : resolvedTheme === "orange"
       ? "bg-[radial-gradient(circle_at_12%_10%,rgba(249,115,22,0.44),transparent_48%),radial-gradient(circle_at_88%_8%,rgba(251,191,36,0.35),transparent_40%)]"
+      : resolvedTheme === "tempo"
+      ? "bg-[radial-gradient(circle_at_12%_10%,rgba(51,65,85,0.28),transparent_48%),radial-gradient(circle_at_88%_8%,rgba(148,163,184,0.24),transparent_40%)]"
       : "bg-[radial-gradient(circle_at_12%_10%,rgba(120,113,108,0.2),transparent_44%),radial-gradient(circle_at_88%_8%,rgba(120,113,108,0.14),transparent_36%)]";
+  const seedTone =
+    resolvedTheme === "blue"
+      ? "seed-blue"
+      : resolvedTheme === "orange"
+      ? "seed-orange"
+      : "seed-neutral";
 
   const primaryNav = [
     { href: "/create-bill", label: "Create Bill" },
@@ -54,22 +68,22 @@ export function LayoutShell({ children }: LayoutShellProps) {
       />
       <div className="pointer-events-none absolute inset-0 hidden overflow-hidden md:block">
         <span
-          className={`dandelion-seed seed-one ${resolvedTheme === "blue" ? "seed-blue" : resolvedTheme === "orange" ? "seed-orange" : "seed-neutral"}`}
+          className={`dandelion-seed seed-one ${seedTone}`}
         />
         <span
-          className={`dandelion-seed seed-two ${resolvedTheme === "blue" ? "seed-blue" : resolvedTheme === "orange" ? "seed-orange" : "seed-neutral"}`}
+          className={`dandelion-seed seed-two ${seedTone}`}
         />
         <span
-          className={`dandelion-seed seed-three ${resolvedTheme === "blue" ? "seed-blue" : resolvedTheme === "orange" ? "seed-orange" : "seed-neutral"}`}
+          className={`dandelion-seed seed-three ${seedTone}`}
         />
         <span
-          className={`dandelion-seed seed-four ${resolvedTheme === "blue" ? "seed-blue" : resolvedTheme === "orange" ? "seed-orange" : "seed-neutral"}`}
+          className={`dandelion-seed seed-four ${seedTone}`}
         />
         <span
-          className={`dandelion-seed seed-five ${resolvedTheme === "blue" ? "seed-blue" : resolvedTheme === "orange" ? "seed-orange" : "seed-neutral"}`}
+          className={`dandelion-seed seed-five ${seedTone}`}
         />
         <span
-          className={`dandelion-seed seed-six ${resolvedTheme === "blue" ? "seed-blue" : resolvedTheme === "orange" ? "seed-orange" : "seed-neutral"}`}
+          className={`dandelion-seed seed-six ${seedTone}`}
         />
       </div>
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r border-white/10 bg-[#0b0b0b] text-white md:flex">

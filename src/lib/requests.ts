@@ -16,6 +16,8 @@ export type SplitRequest = {
   creatorAddress: string;
   participantAddress: string;
   amountUsdc?: string;
+  tokenAddress?: string;
+  tokenSymbol?: string;
   isConfidential: boolean;
   status: SplitRequestStatus;
   createdAt: number;
@@ -64,6 +66,8 @@ export function createSplitRequests(params: {
   creatorAddress: string;
   participants: string[];
   amountUsdc: string;
+  tokenAddress?: string;
+  tokenSymbol?: string;
   customReminder?: string;
 }): void {
   const creator = normalize(params.creatorAddress);
@@ -83,6 +87,8 @@ export function createSplitRequests(params: {
         creatorAddress: creator,
         participantAddress: participant,
         amountUsdc: params.amountUsdc,
+        tokenAddress: params.tokenAddress,
+        tokenSymbol: params.tokenSymbol,
         isConfidential: false,
         status: "pending" as const,
         createdAt: now,

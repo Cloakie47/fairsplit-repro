@@ -35,7 +35,7 @@ export async function GET() {
           fontSize: 40,
           color: "#f2ebf1",
         },
-        children: "Split bills and settle with USDC",
+        children: "Split bills and settle with stable tokens",
       })
     ),
     { width: 1200, height: 630 }

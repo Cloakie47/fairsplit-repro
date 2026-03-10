@@ -94,7 +94,9 @@ export default function RequestsPage() {
                         />
                       </p>
                       <p className="mt-1 text-xs text-stone-500">
-                        {item.isConfidential ? "Confidential payment" : `${item.amountUsdc ?? "--"} USDC`}
+                        {item.isConfidential
+                          ? `Confidential payment${item.tokenSymbol ? ` · ${item.tokenSymbol}` : ""}`
+                          : `${item.amountUsdc ?? "--"} ${item.tokenSymbol ?? "USDC"}`}
                       </p>
                     </div>
                     <div className="text-right">

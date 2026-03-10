@@ -96,6 +96,7 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
 
   const isBase = chainId === SUPPORTED_CHAINS.baseSepolia.id;
   const isArc = chainId === SUPPORTED_CHAINS.arcTestnet.id;
+  const isTempo = chainId === SUPPORTED_CHAINS.tempoTestnet.id;
 
   // Prefer deterministic connector ordering to avoid extension conflicts.
   const preferredConnector =
@@ -121,7 +122,7 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
     if (isMobile) {
       return (
         <div className="flex min-w-0 flex-1 flex-col gap-2">
-          {!isBase && !isArc && switchChain && (
+          {!isBase && !isArc && !isTempo && switchChain && (
             <button
               onClick={() => switchChain({ chainId: SUPPORTED_CHAINS.baseSepolia.id })}
               className="h-9 rounded-xl border border-stone-300 bg-white px-3 text-xs font-semibold text-stone-800 transition hover:bg-stone-100"
@@ -137,6 +138,7 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
             >
               <option value={SUPPORTED_CHAINS.baseSepolia.id}>Base</option>
               <option value={SUPPORTED_CHAINS.arcTestnet.id}>Arc</option>
+              <option value={SUPPORTED_CHAINS.tempoTestnet.id}>Tempo</option>
             </select>
             <div className="flex min-w-0 items-center gap-2 border-l border-stone-200 pl-3">
               <span className="max-w-[12.5rem] truncate text-sm font-semibold text-stone-700">
@@ -157,7 +159,7 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
 
     return (
       <div className="flex flex-wrap items-center justify-end gap-2">
-        {!isBase && !isArc && switchChain && (
+        {!isBase && !isArc && !isTempo && switchChain && (
           <button
             onClick={() => switchChain({ chainId: SUPPORTED_CHAINS.baseSepolia.id })}
             className="h-10 rounded-xl border border-stone-300 bg-white px-3 text-sm font-semibold text-stone-800 transition hover:bg-stone-100"
@@ -173,6 +175,7 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
           >
             <option value={SUPPORTED_CHAINS.baseSepolia.id}>Base</option>
             <option value={SUPPORTED_CHAINS.arcTestnet.id}>Arc</option>
+            <option value={SUPPORTED_CHAINS.tempoTestnet.id}>Tempo</option>
           </select>
           <div className="flex min-w-0 items-center gap-2 border-l border-stone-200 pl-3">
             <span className="max-w-[15rem] truncate text-sm font-semibold text-stone-700">

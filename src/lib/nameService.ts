@@ -25,6 +25,7 @@ const addressToNameCache = new Map<string, string>();
 const RESOLVED_NAME_STORAGE_KEY = "fairysplit_resolved_names_v1";
 const RESOLVED_NAME_EVENT = "fairysplit-resolved-name-updated";
 const ARC_TESTNET_CHAIN_ID = 5042002;
+const TEMPO_TESTNET_CHAIN_ID = 42431;
 
 type ResolvedNameMap = Record<string, string>;
 
@@ -200,6 +201,7 @@ export async function resolveAddressToPreferredName(
 
   let resolvedName: string | null = null;
   const resolutionChain = getResolutionChain(chainId);
+  const blockBaseNames = chainId === ARC_TESTNET_CHAIN_ID || chainId === TEMPO_TESTNET_CHAIN_ID;
 
   // ENS-style lookup for all chains; use chain context first when available.
   if (resolutionChain) {
@@ -209,7 +211,7 @@ export async function resolveAddressToPreferredName(
       resolvedName = null;
     }
   }
-  if (!resolvedName) {
+  if (!resolvedName && !blockBaseNames) {
     try {
       resolvedName = (await onchainkitGetName({ address, chain: base })) ?? null;
     } catch {
@@ -218,7 +220,8 @@ export async function resolveAddressToPreferredName(
   }
   if (!resolvedName) {
     try {
-      resolvedName = (await onchainkitGetName({ address })) ?? null;
+      const candidate = (await onchainkitGetName({ address })) ?? null;
+      resolvedName = blockBaseNames && candidate && isBasename(candidate) ? null : candidate;
     } catch {
       resolvedName = null;
     }
@@ -231,9 +234,9 @@ export async function resolveAddressToPreferredName(
     }
   }
 
-  // ARC rule: never display Base names on ARC.
-  // If ARC has no ENS-style name, caller should fall back to profile/address.
-  if (chainId === ARC_TESTNET_CHAIN_ID && resolvedName && isBasename(resolvedName)) {
+  // ARC and Tempo rule: never display Base names there.
+  // If no ENS-style name exists, caller should fall back to profile/address.
+  if (blockBaseNames && resolvedName && isBasename(resolvedName)) {
     resolvedName = null;
   }
 

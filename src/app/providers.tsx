@@ -22,13 +22,25 @@ const arcTestnet = defineChain({
   },
 });
 
+const tempoTestnet = defineChain({
+  id: SUPPORTED_CHAINS.tempoTestnet.id,
+  name: SUPPORTED_CHAINS.tempoTestnet.name,
+  nativeCurrency: { name: "USD", symbol: "USD", decimals: 18 },
+  rpcUrls: {
+    default: { http: [SUPPORTED_CHAINS.tempoTestnet.rpc] },
+  },
+  blockExplorers: {
+    default: { name: "Tempo Explorer", url: "https://explore.tempo.xyz" },
+  },
+});
+
 const BUILDER_CODE = process.env.NEXT_PUBLIC_BASE_BUILDER_CODE;
 const DATA_SUFFIX = BUILDER_CODE
   ? Attribution.toDataSuffix({ codes: [BUILDER_CODE] })
   : undefined;
 
 const config = createConfig({
-  chains: [baseSepolia, arcTestnet],
+  chains: [baseSepolia, arcTestnet, tempoTestnet],
   connectors: [
     metaMask({
       dappMetadata: {
@@ -40,6 +52,7 @@ const config = createConfig({
   transports: {
     [baseSepolia.id]: http(),
     [arcTestnet.id]: http(),
+    [tempoTestnet.id]: http(),
   },
   ...(DATA_SUFFIX ? { dataSuffix: DATA_SUFFIX } : {}),
 });
