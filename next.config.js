@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  env: {
+    PINATA_JWT: process.env.PINATA_JWT,
+  },
   webpack: (config) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
