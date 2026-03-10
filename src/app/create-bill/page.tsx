@@ -1,13 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAccount, useChainId } from "wagmi";
 import { useWalletClient } from "wagmi";
 import { LayoutShell } from "@/components/LayoutShell";
 import { getContract, parseBillId } from "@/lib/contract";
-import { USDC_ADDRESSES, CONTRACT_ADDRESSES } from "@/lib/chains";
+import {
+  CONTRACT_ADDRESSES,
+  getDefaultTokenForChain,
+  getTokensForChain,
+  isBillSplitterConfigured,
+  SUPPORTED_CHAINS,
+} from "@/lib/chains";
 import { useChainTheme, CHAIN_ACCENT } from "@/lib/theme";
 import { logActivity } from "@/lib/activity";
 import { createSplitRequests } from "@/lib/requests";
@@ -26,21 +32,45 @@ export default function CreateBillPage() {
   const { data: walletClient } = useWalletClient();
   const theme = useChainTheme();
   const accent = CHAIN_ACCENT[theme];
+  const isTempo = chainId === SUPPORTED_CHAINS.tempoTestnet.id;
+  const availableTokens = useMemo(() => getTokensForChain(chainId), [chainId]);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [customReminder, setCustomReminder] = useState("");
   const [participantsStr, setParticipantsStr] = useState("");
   const [amountStr, setAmountStr] = useState("");
+  const [selectedTokenAddress, setSelectedTokenAddress] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const selectedToken =
+    availableTokens.find((token) => token.address === selectedTokenAddress) ??
+    getDefaultTokenForChain(chainId);
+  const tokenSymbol = selectedToken?.symbol ?? "USDC";
+  const contractDeployed = isBillSplitterConfigured(chainId);
+
+  useEffect(() => {
+    const fallback = getDefaultTokenForChain(chainId);
+    if (!fallback) {
+      setSelectedTokenAddress("");
+      return;
+    }
+    const exists = availableTokens.some((token) => token.address === selectedTokenAddress);
+    if (!selectedTokenAddress || !exists) {
+      setSelectedTokenAddress(fallback.address);
+    }
+  }, [availableTokens, chainId, selectedTokenAddress]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!walletClient || !address || !chainId) return;
-    const usdc = USDC_ADDRESSES[chainId];
-    if (!usdc) {
-      setError("Unsupported chain. Switch to Base or Arc.");
+    if (!walletClient || !address || !chainId || !selectedToken) return;
+    const tokenAddress = selectedToken.address;
+    if (!tokenAddress) {
+      setError(
+        isTempo
+          ? "Tempo multi-token split creation is being integrated. Switch to Base or Arc for live split creation."
+          : "Unsupported chain. Switch to Base or Arc."
+      );
       return;
     }
     setLoading(true);
@@ -78,7 +108,7 @@ export default function CreateBillPage() {
         name.trim(),
         description.trim(),
         customReminder.trim(),
-        usdc,
+        tokenAddress,
         participants,
         amountRaw
       );
@@ -90,6 +120,8 @@ export default function CreateBillPage() {
         creatorAddress: address,
         participants,
         amountUsdc: ethers.formatUnits(amountRaw, 6),
+        tokenAddress,
+        tokenSymbol,
         customReminder: customReminder.trim(),
       });
 
@@ -126,6 +158,8 @@ export default function CreateBillPage() {
             creatorAddress: address,
             creatorDisplayName: creatorProfile?.displayName,
             amountUsdc: ethers.formatUnits(amountRaw, 6),
+            tokenAddress,
+            tokenSymbol,
             customReminder: customReminder.trim(),
             appUrl: window.location.origin,
             recipients,
@@ -170,20 +204,24 @@ export default function CreateBillPage() {
       logActivity(
         "bill_created",
         "Split created",
-        `${name.trim()} · ${participants.length} participant(s) · ${amountStr} USDC`,
+        `${name.trim()} · ${participants.length} participant(s) · ${amountStr} ${tokenSymbol}`,
         { chainId, txHash: tx.hash as string, billId }
       );
       showSuccessToast("Split created", `${participants.length} participant(s) added`);
       router.push(`/bill/${billId}`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to create bill";
-      setError(msg.includes("not deployed") ? "Deploy the BillSplitter contract first. See the yellow banner above." : msg);
+      setError(
+        msg.includes("not deployed")
+          ? isTempo
+            ? "Tempo BillSplitter is not configured yet. Set NEXT_PUBLIC_TEMPO_BILLSPLITTER_ADDRESS, then retry."
+            : "Deploy the BillSplitter contract first. See the yellow banner above."
+          : msg
+      );
     } finally {
       setLoading(false);
     }
   };
-
-  const contractDeployed = chainId && !!CONTRACT_ADDRESSES[chainId];
 
   return (
     <LayoutShell>
@@ -191,8 +229,19 @@ export default function CreateBillPage() {
         Create split
       </h2>
       <p className="mb-8 text-base text-stone-600">
-        Name your split, add participants, and set the USDC amount each person owes.
+        Name your split, add participants, and set the stable token amount each person owes.
       </p>
+
+      {isTempo && (
+        <div className="mb-8 rounded-2xl border border-slate-300 bg-slate-50/95 p-5">
+          <p className="font-semibold text-slate-900">Tempo integration is in progress</p>
+          <p className="mt-1 text-sm text-slate-700">
+            {contractDeployed
+              ? "Tempo BillSplitter is configured. You can create Tempo splits with the selected token."
+              : "Tempo token selection is now visible here. Set NEXT_PUBLIC_TEMPO_BILLSPLITTER_ADDRESS to enable Tempo split creation."}
+          </p>
+        </div>
+      )}
 
       {!contractDeployed && (
         <div className="mb-8 rounded-2xl border border-amber-300/80 bg-amber-50/95 p-5">
@@ -200,7 +249,23 @@ export default function CreateBillPage() {
             Contract not deployed yet
           </p>
           <p className="mt-1 text-sm text-amber-700">
-            Run <code className="rounded bg-amber-100 px-1 py-0.5">npm run deploy:arc</code> or <code className="rounded bg-amber-100 px-1 py-0.5">npm run deploy:base</code> with your wallet&apos;s private key in .env, then add the deployed address to <code className="rounded bg-amber-100 px-1 py-0.5">src/lib/chains.ts</code>. See README for details.
+            {isTempo ? (
+              <>
+                Set{" "}
+                <code className="rounded bg-amber-100 px-1 py-0.5">
+                  NEXT_PUBLIC_TEMPO_BILLSPLITTER_ADDRESS
+                </code>{" "}
+                after deploying BillSplitter on Tempo testnet, then restart the app.
+              </>
+            ) : (
+              <>
+                Run <code className="rounded bg-amber-100 px-1 py-0.5">npm run deploy:arc</code> or{" "}
+                <code className="rounded bg-amber-100 px-1 py-0.5">npm run deploy:base</code> with your
+                wallet&apos;s private key in .env, then add the deployed address to{" "}
+                <code className="rounded bg-amber-100 px-1 py-0.5">src/lib/chains.ts</code>. See README for
+                details.
+              </>
+            )}
           </p>
         </div>
       )}
@@ -264,6 +329,29 @@ export default function CreateBillPage() {
               />
             </div>
             <div>
+              <label htmlFor="split-token" className="block text-sm font-medium text-stone-700">
+                Token
+              </label>
+              {availableTokens.length > 1 ? (
+                <select
+                  id="split-token"
+                  value={selectedTokenAddress}
+                  onChange={(e) => setSelectedTokenAddress(e.target.value)}
+                  className={`mt-2 w-full rounded-2xl border border-stone-200 px-4 py-3 text-stone-900 ${accent.focus}`}
+                >
+                  {availableTokens.map((token) => (
+                    <option key={token.address} value={token.address}>
+                      {token.symbol}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="mt-2 inline-flex rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-sm font-semibold text-stone-700">
+                  {selectedToken?.symbol}
+                </div>
+              )}
+            </div>
+            <div>
               <label
                 htmlFor="split-participants"
                 className="block text-sm font-medium text-stone-700"
@@ -282,7 +370,7 @@ export default function CreateBillPage() {
             </div>
             <div>
               <label htmlFor="split-amount" className="block text-sm font-medium text-stone-700">
-                Amount per person (USDC)
+                Amount per person ({tokenSymbol})
               </label>
               <input
                 id="split-amount"
@@ -305,10 +393,16 @@ export default function CreateBillPage() {
           <div className="mt-5 flex gap-3">
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !contractDeployed}
               className={`rounded-2xl px-6 py-3 text-sm font-semibold text-white ${accent.bg} ${accent.hover} transition disabled:opacity-50`}
             >
-              {loading ? "Creating…" : "Create split"}
+              {!contractDeployed
+                ? isTempo
+                  ? "Configure Tempo BillSplitter first"
+                  : "Contract required"
+                : loading
+                ? "Creating…"
+                : "Create split"}
             </button>
             <Link
               href="/app"

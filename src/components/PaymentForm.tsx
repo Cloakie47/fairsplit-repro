@@ -8,6 +8,8 @@ type PaymentFormProps = {
   billId: string;
   amountWei: bigint;
   amountFormatted: string;
+  tokenSymbol?: string;
+  confidentialTokenSymbol?: string;
   onPayNormal: () => Promise<void>;
   onPayConfidential?: () => Promise<void>;
   isPayer: boolean;
@@ -17,6 +19,8 @@ type PaymentFormProps = {
 
 export function PaymentForm({
   amountFormatted,
+  tokenSymbol = "USDC",
+  confidentialTokenSymbol = "cUSDC",
   onPayNormal,
   onPayConfidential,
   isPayer,
@@ -95,8 +99,8 @@ export function PaymentForm({
       )}
       {mode === "confidential" && (
         <p className="mt-2 text-sm text-stone-600">
-          Confidential payment uses your cUSDC balance. If needed, top up cUSDC in
-          Confidential Wallet first.
+          Confidential payment uses your {confidentialTokenSymbol} balance. If needed, top up{" "}
+          {confidentialTokenSymbol} from {tokenSymbol} in Confidential Wallet first.
         </p>
       )}
       {mode === "confidential" && !chainId && (

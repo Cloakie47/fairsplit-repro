@@ -12,11 +12,16 @@ import { getUsdcContract } from "@/lib/usdc";
 // Uncomment when integrating:
 // import { ConfidentialTransferClient } from "@fairblock/stabletrust";
 
+const TEMPO_STABLETRUST_ADDRESS = process.env.NEXT_PUBLIC_TEMPO_STABLETRUST_ADDRESS;
+
 const STABLETRUST_ADDRESSES: Record<number, string> = {
   84532: "0x962a8A7CD28BfFBb17C4F6Ec388782cca3ffd618", // Base testnet (current)
   1244: "0xb20aB54e1c6AE55B0DD11FEB7FFf3fF1E9631f19", // Arc canonical chain id (current deployment)
   // Arc app-chain id maps to the same canonical StableTrust deployment.
   5042002: "0xb20aB54e1c6AE55B0DD11FEB7FFf3fF1E9631f19",
+  ...(TEMPO_STABLETRUST_ADDRESS && ethers.isAddress(TEMPO_STABLETRUST_ADDRESS)
+    ? { 42431: TEMPO_STABLETRUST_ADDRESS }
+    : {}),
 };
 
 const STABLETRUST_LEGACY_ADDRESSES: Record<number, string[]> = {
@@ -29,6 +34,7 @@ const STABLETRUST_RPCS: Record<number, string> = {
   84532: "https://sepolia.base.org",
   1244: "https://rpc.testnet.arc.network",
   5042002: "https://rpc.testnet.arc.network",
+  42431: "https://rpc.moderato.tempo.xyz",
 };
 
 const STABLETRUST_CHAIN_IDS: Record<number, number> = {
@@ -36,6 +42,7 @@ const STABLETRUST_CHAIN_IDS: Record<number, number> = {
   1244: 1244,
   // Must match the connected wallet chain for eth_signTypedData_v4.
   5042002: 5042002,
+  42431: 42431,
 };
 
 type ConfidentialKeys = {
@@ -61,6 +68,11 @@ export type ConfidentialStatus =
   | "retrying";
 
 type StatusHandler = (status: ConfidentialStatus) => void;
+
+export function isConfidentialTransferConfigured(chainId?: number): boolean {
+  if (!chainId) return false;
+  return !!STABLETRUST_ADDRESSES[chainId] && !!STABLETRUST_RPCS[chainId] && !!STABLETRUST_CHAIN_IDS[chainId];
+}
 
 function isValidConfidentialKeys(value: unknown): value is ConfidentialKeys {
   if (!value || typeof value !== "object") return false;
@@ -259,7 +271,7 @@ function normalizeConfidentialError(error: unknown): Error {
 
   if (msg.includes("insufficient allowance")) {
     return new Error(
-      "USDC approval is missing or too low for confidential deposit. Approve USDC and retry."
+      "Token approval is missing or too low for confidential deposit. Approve the selected token and retry."
     );
   }
 
@@ -511,9 +523,9 @@ export async function preflightConfidentialPayment(
     amountX100 > availableX100 ? amountX100 - availableX100 : BigInt(0);
   if (shortfallX100 > BigInt(0)) {
     throw new Error(
-      `Insufficient cUSDC for confidential payment. Need ${x100ToUsdcDisplay(
+      `Insufficient confidential balance for payment. Need ${x100ToUsdcDisplay(
         shortfallX100
-      )} more cUSDC. Open Confidential Wallet and convert USDC to cUSDC first.`
+      )} more. Open Confidential Wallet and convert more of the selected token first.`
     );
   }
   return {
@@ -617,9 +629,9 @@ export async function performConfidentialPayment(
     amountX100 > availableX100 ? amountX100 - availableX100 : BigInt(0);
   if (shortfallX100 > BigInt(0)) {
     throw new Error(
-      `Insufficient cUSDC for confidential payment. Need ${x100ToUsdcDisplay(
+      `Insufficient confidential balance for payment. Need ${x100ToUsdcDisplay(
         shortfallX100
-      )} more cUSDC. Open Confidential Wallet and convert USDC to cUSDC first.`
+      )} more. Open Confidential Wallet and convert more of the selected token first.`
     );
   }
   onStatus?.("transferring");
@@ -687,7 +699,7 @@ export async function claimPendingConfidentialBalance(
   );
   const pending = asBigIntAmount(balance.pending.amount);
   if (pending <= BigInt(0)) {
-    throw new Error("No pending cUSDC to claim.");
+    throw new Error("No pending confidential balance to claim.");
   }
 
   // Trigger state progression with a minimal top-up (0.01 USDC).

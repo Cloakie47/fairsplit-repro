@@ -40,13 +40,13 @@ export default function LandingHomePage() {
         <main className="mx-auto w-full max-w-[1200px] px-6 pb-28 pt-20 md:px-10 md:pt-32">
           <section className="landing-fade-up max-w-6xl">
             <p className="inline-flex rounded-full border border-slate-200 bg-white/95 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.13em] text-[#1e40af]">
-              USDC-FIRST SPLIT PAYMENTS
+              STABLE TOKEN SPLIT PAYMENTS
             </p>
             <h2 className="mt-7 max-w-[1100px] text-5xl font-bold leading-[1.02] tracking-tight text-[#0f172a] md:text-7xl">
               Say, Hello to Fairsplit
             </h2>
             <p className="mt-5 max-w-3xl text-lg font-medium text-[#334155] md:text-[2rem] md:leading-tight">
-              Split USDC. Reveal only what&apos;s required.
+              Split stable tokens. Reveal only what&apos;s required.
             </p>
             <p className="mt-5 max-w-2xl text-base leading-relaxed text-[#64748b] md:text-xl">
               Create expense splits, track who paid, send reminders, and settle on-chain with

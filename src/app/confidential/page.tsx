@@ -1,10 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAccount, useChainId, useWalletClient } from "wagmi";
 import Link from "next/link";
 import { LayoutShell } from "@/components/LayoutShell";
-import { USDC_ADDRESSES, SUPPORTED_CHAINS } from "@/lib/chains";
+import {
+  getDefaultTokenForChain,
+  getTokensForChain,
+  SUPPORTED_CHAINS,
+} from "@/lib/chains";
 import {
   claimPendingConfidentialBalance,
   depositUsdcToConfidential,
@@ -12,6 +16,7 @@ import {
   getSignerAddress,
   getConfidentialBalanceSummary,
   hasStoredConfidentialKeys,
+  isConfidentialTransferConfigured,
   preflightConfidentialTopUp,
   preflightConfidentialWithdraw,
   withdrawConfidentialToUsdc,
@@ -34,9 +39,17 @@ export default function ConfidentialPage() {
     available: number;
     pending: number;
   } | null>(null);
+  const [selectedTokenAddress, setSelectedTokenAddress] = useState("");
+  const isTempo = chainId === SUPPORTED_CHAINS.tempoTestnet.id;
+  const availableTokens = useMemo(() => getTokensForChain(chainId), [chainId]);
+  const selectedToken =
+    availableTokens.find((token) => token.address === selectedTokenAddress) ??
+    getDefaultTokenForChain(chainId);
+  const tokenSymbol = selectedToken?.symbol ?? "USDC";
+  const confidentialTokenSymbol = selectedToken?.confidentialSymbol ?? `c${tokenSymbol}`;
+  const confidentialConfigured = isConfidentialTransferConfigured(chainId);
 
-  const isSupportedChain =
-    chainId === SUPPORTED_CHAINS.arcTestnet.id || chainId === SUPPORTED_CHAINS.baseSepolia.id;
+  const isSupportedChain = confidentialConfigured;
   const canUseConfidential = !!isConnected && !!walletClient && !!chainId && isSupportedChain;
   const availableAmount = balance?.available ?? 0;
   const withdrawAsNumber = Number(withdrawAmount || "0");
@@ -60,12 +73,24 @@ export default function ConfidentialPage() {
     awaiting_signature: "Waiting for wallet signature...",
     creating_account: "Creating confidential account...",
     reading_balance: "Refreshing confidential balance...",
-    depositing: "Converting USDC to cUSDC...",
-    withdrawing: "Converting cUSDC to USDC...",
+    depositing: `Converting ${tokenSymbol} to ${confidentialTokenSymbol}...`,
+    withdrawing: `Converting ${confidentialTokenSymbol} to ${tokenSymbol}...`,
     transferring: "Submitting confidential transfer...",
     finalizing: "Waiting for finalization...",
     retrying: "Network is temporarily busy, retrying...",
   };
+
+  useEffect(() => {
+    const fallback = getDefaultTokenForChain(chainId);
+    if (!fallback) {
+      setSelectedTokenAddress("");
+      return;
+    }
+    const exists = availableTokens.some((token) => token.address === selectedTokenAddress);
+    if (!selectedTokenAddress || !exists) {
+      setSelectedTokenAddress(fallback.address);
+    }
+  }, [availableTokens, chainId, selectedTokenAddress]);
 
   const setupAccount = async () => {
     if (!walletClient || !chainId) return;
@@ -94,26 +119,25 @@ export default function ConfidentialPage() {
   };
 
   const refreshBalance = async () => {
-    if (!walletClient || !chainId) return;
+    if (!walletClient || !chainId || !selectedToken) return;
     setLoading(true);
     setStatus(null);
     setStage(null);
     try {
-      const usdc = USDC_ADDRESSES[chainId];
-      if (!usdc) throw new Error("Unsupported chain.");
+      const tokenAddress = selectedToken.address;
       const signer = await walletClientToSigner(walletClient);
       const signerAddress = await getSignerAddress(signer);
       if (!hasStoredConfidentialKeys(chainId, signerAddress)) {
         throw new Error("Initialize confidential account first.");
       }
-      const next = await getConfidentialBalanceSummary(signer, usdc, chainId, () => {
+      const next = await getConfidentialBalanceSummary(signer, tokenAddress, chainId, () => {
         setStage("Refreshing confidential balance...");
       });
       setBalance(next);
       logActivity(
         "confidential_balance_refreshed",
         "Confidential balance refreshed",
-        `Available ${next.available.toFixed(2)} USDC`,
+        `Available ${next.available.toFixed(2)} ${tokenSymbol}`,
         { chainId }
       );
     } catch (e) {
@@ -125,31 +149,36 @@ export default function ConfidentialPage() {
   };
 
   const withdraw = async () => {
-    if (!walletClient || !chainId) return;
+    if (!walletClient || !chainId || !selectedToken) return;
     setLoading(true);
     setStatus(null);
     setStage(null);
     try {
-      const usdc = USDC_ADDRESSES[chainId];
-      if (!usdc) throw new Error("Unsupported chain.");
+      const tokenAddress = selectedToken.address;
       if (withdrawAsNumber > availableAmount) {
         throw new Error("Withdraw amount is greater than available confidential balance.");
       }
       const signer = await walletClientToSigner(walletClient);
       setStage("Running withdraw preflight checks...");
-      await preflightConfidentialWithdraw(signer, usdc, withdrawAmount, chainId);
+      await preflightConfidentialWithdraw(signer, tokenAddress, withdrawAmount, chainId);
       setStage("Preflight complete. Opening wallet...");
-      const txHash = await withdrawConfidentialToUsdc(signer, usdc, withdrawAmount, chainId, (next) => {
-        setStage(statusLabels[next] ?? "Submitting withdraw transaction...");
-      });
+      const txHash = await withdrawConfidentialToUsdc(
+        signer,
+        tokenAddress,
+        withdrawAmount,
+        chainId,
+        (next) => {
+          setStage(statusLabels[next] ?? "Submitting withdraw transaction...");
+        }
+      );
       logActivity(
         "confidential_withdraw_completed",
         "Confidential withdraw completed",
-        `${withdrawAmount} USDC to public wallet`,
+        `${withdrawAmount} ${tokenSymbol} to public wallet`,
         { chainId, txHash }
       );
       setStatus("Withdraw completed.");
-      showSuccessToast("Withdraw completed", `${withdrawAmount} USDC moved to wallet`);
+      showSuccessToast("Withdraw completed", `${withdrawAmount} ${tokenSymbol} moved to wallet`);
       setWithdrawAmount("");
       await refreshBalance();
     } catch (e) {
@@ -161,28 +190,33 @@ export default function ConfidentialPage() {
   };
 
   const topUpConfidential = async () => {
-    if (!walletClient || !chainId) return;
+    if (!walletClient || !chainId || !selectedToken) return;
     setLoading(true);
     setStatus(null);
     setStage(null);
     try {
-      const usdc = USDC_ADDRESSES[chainId];
-      if (!usdc) throw new Error("Unsupported chain.");
+      const tokenAddress = selectedToken.address;
       const signer = await walletClientToSigner(walletClient);
       setStage("Running top-up preflight checks...");
-      await preflightConfidentialTopUp(signer, usdc, depositAmount, chainId);
+      await preflightConfidentialTopUp(signer, tokenAddress, depositAmount, chainId);
       setStage("Preflight complete. Opening wallet...");
-      const txHash = await depositUsdcToConfidential(signer, usdc, depositAmount, chainId, (next) => {
-        setStage(statusLabels[next] ?? "Converting USDC to cUSDC...");
-      });
+      const txHash = await depositUsdcToConfidential(
+        signer,
+        tokenAddress,
+        depositAmount,
+        chainId,
+        (next) => {
+          setStage(statusLabels[next] ?? `Converting ${tokenSymbol} to ${confidentialTokenSymbol}...`);
+        }
+      );
       logActivity(
         "confidential_topup_completed",
-        "Converted USDC to cUSDC",
-        `${depositAmount} USDC`,
+        `Converted ${tokenSymbol} to ${confidentialTokenSymbol}`,
+        `${depositAmount} ${tokenSymbol}`,
         { chainId, txHash }
       );
-      setStatus("USDC converted to cUSDC.");
-      showSuccessToast("Converted to cUSDC", `${depositAmount} USDC`);
+      setStatus(`${tokenSymbol} converted to ${confidentialTokenSymbol}.`);
+      showSuccessToast(`Converted to ${confidentialTokenSymbol}`, `${depositAmount} ${tokenSymbol}`);
       setDepositAmount("");
       await refreshBalance();
     } catch (e) {
@@ -194,26 +228,25 @@ export default function ConfidentialPage() {
   };
 
   const claimPending = async () => {
-    if (!walletClient || !chainId) return;
+    if (!walletClient || !chainId || !selectedToken) return;
     setLoading(true);
     setStatus(null);
     setStage(null);
     try {
-      const usdc = USDC_ADDRESSES[chainId];
-      if (!usdc) throw new Error("Unsupported chain.");
+      const tokenAddress = selectedToken.address;
       const signer = await walletClientToSigner(walletClient);
-      setStage("Claiming pending cUSDC...");
-      const txHash = await claimPendingConfidentialBalance(signer, usdc, chainId, (next) => {
-        setStage(statusLabels[next] ?? "Claiming pending cUSDC...");
+      setStage(`Claiming pending ${confidentialTokenSymbol}...`);
+      const txHash = await claimPendingConfidentialBalance(signer, tokenAddress, chainId, (next) => {
+        setStage(statusLabels[next] ?? `Claiming pending ${confidentialTokenSymbol}...`);
       });
       logActivity(
         "confidential_claim_completed",
-        "Pending cUSDC claim submitted",
+        `Pending ${confidentialTokenSymbol} claim submitted`,
         "Triggered micro conversion to settle pending balance",
         { chainId, txHash }
       );
-      setStatus("Pending cUSDC claim submitted.");
-      showSuccessToast("Pending cUSDC claimed");
+      setStatus(`Pending ${confidentialTokenSymbol} claim submitted.`);
+      showSuccessToast(`Pending ${confidentialTokenSymbol} claimed`);
       await refreshBalance();
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Claim failed.");
@@ -239,13 +272,54 @@ export default function ConfidentialPage() {
 
       <div className="rounded-2xl border border-stone-200 bg-white/95 p-5">
         <p className="text-sm text-stone-600">
-          Use this page to initialize your confidential account, convert USDC to cUSDC,
-          view confidential balances, and convert cUSDC back to USDC.
+          Use this page to initialize your confidential account, convert your selected stable token
+          to its confidential balance, view per-token balances, and convert it back to your public wallet.
         </p>
         {!isSupportedChain && (
           <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            Confidential flow is enabled on Base Sepolia and Arc testnet.
+            {isTempo
+              ? "Tempo confidential wallet is wired for execution, but it still needs NEXT_PUBLIC_TEMPO_STABLETRUST_ADDRESS before the Fairblock route can be used."
+              : "Confidential flow is enabled on Base Sepolia and Arc testnet."}
           </p>
+        )}
+        {isTempo && isSupportedChain && (
+          <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            Tempo confidential wallet execution is enabled for the selected token. Direct confidential
+            payments and Tempo split settlement are still being phased in separately.
+          </p>
+        )}
+
+        {availableTokens.length > 0 && (
+          <div className="mt-4 rounded-xl border border-stone-200 bg-white p-4">
+            <label className="block text-sm font-medium text-stone-700">Selected token</label>
+            {availableTokens.length > 1 ? (
+              <select
+                value={selectedTokenAddress}
+                onChange={(e) => {
+                  setSelectedTokenAddress(e.target.value);
+                  setBalance(null);
+                  setStatus(null);
+                  setStage(null);
+                }}
+                className="mt-2 w-full rounded-2xl border border-stone-200 px-4 py-3 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
+              >
+                {availableTokens.map((token) => (
+                  <option key={token.address} value={token.address}>
+                    {token.symbol}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="mt-2 inline-flex rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-sm font-semibold text-stone-700">
+                {selectedToken?.symbol}
+              </div>
+            )}
+            {selectedToken && (
+              <p className="mt-2 text-xs text-stone-500">
+                Public token: {selectedToken.symbol} · Confidential token: {selectedToken.confidentialSymbol}
+              </p>
+            )}
+          </div>
         )}
 
         <div className="mt-4 flex flex-wrap gap-3">
@@ -268,7 +342,7 @@ export default function ConfidentialPage() {
             disabled={claimDisabled}
             className="rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-800 transition hover:bg-stone-100 disabled:opacity-50"
           >
-            Claim pending cUSDC
+            Claim pending {confidentialTokenSymbol}
           </button>
         </div>
 
@@ -276,25 +350,27 @@ export default function ConfidentialPage() {
           <div className="rounded-xl border border-stone-200 bg-white p-3.5">
             <p className="text-xs text-stone-500">Total</p>
             <p className="text-xl font-semibold text-stone-900">
-              {balance ? balance.total.toFixed(2) : "--"} cUSDC
+              {balance ? balance.total.toFixed(2) : "--"} {confidentialTokenSymbol}
             </p>
           </div>
           <div className="rounded-xl border border-stone-200 bg-white p-3.5">
-            <p className="text-xs text-stone-500">Available cUSDC</p>
+            <p className="text-xs text-stone-500">Available {confidentialTokenSymbol}</p>
             <p className="text-xl font-semibold text-stone-900">
-              {balance ? balance.available.toFixed(2) : "--"} cUSDC
+              {balance ? balance.available.toFixed(2) : "--"} {confidentialTokenSymbol}
             </p>
           </div>
           <div className="rounded-xl border border-stone-200 bg-white p-3.5">
-            <p className="text-xs text-stone-500">Pending cUSDC</p>
+            <p className="text-xs text-stone-500">Pending {confidentialTokenSymbol}</p>
             <p className="text-xl font-semibold text-stone-900">
-              {balance ? balance.pending.toFixed(2) : "--"} cUSDC
+              {balance ? balance.pending.toFixed(2) : "--"} {confidentialTokenSymbol}
             </p>
           </div>
         </div>
 
         <div className="mt-5 border-t border-stone-200 pt-5">
-          <h2 className="text-lg font-semibold text-stone-900">Convert USDC to cUSDC</h2>
+          <h2 className="text-lg font-semibold text-stone-900">
+            Convert {tokenSymbol} to {confidentialTokenSymbol}
+          </h2>
           <p className="mt-1 text-sm text-stone-600">
             Tops up your confidential balance from your public wallet balance.
           </p>
@@ -310,15 +386,17 @@ export default function ConfidentialPage() {
               disabled={depositDisabled}
               className="rounded-xl border border-[#d56ac7] bg-[#f7b8ee] px-4 py-2.5 text-sm font-semibold text-stone-900 transition hover:brightness-95 disabled:opacity-50"
             >
-              Convert to cUSDC
+              Convert to {confidentialTokenSymbol}
             </button>
           </div>
         </div>
 
         <div className="mt-5 border-t border-stone-200 pt-5">
-          <h2 className="text-lg font-semibold text-stone-900">Convert cUSDC to USDC</h2>
+          <h2 className="text-lg font-semibold text-stone-900">
+            Convert {confidentialTokenSymbol} to {tokenSymbol}
+          </h2>
           <p className="mt-1 text-sm text-stone-600">
-            Moves confidential available balance into your normal wallet USDC balance.
+            Moves confidential available balance into your normal wallet {tokenSymbol} balance.
           </p>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row">
             <input
@@ -336,7 +414,7 @@ export default function ConfidentialPage() {
             </button>
           </div>
           <p className="mt-2 text-xs text-stone-500">
-            This conversion is enabled only when account is initialized and amount is within available cUSDC.
+            This conversion is enabled only when account is initialized and amount is within available {confidentialTokenSymbol}.
           </p>
         </div>
 

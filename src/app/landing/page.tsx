@@ -26,7 +26,7 @@ export default function LandingPage() {
           <div className="mx-auto grid w-full max-w-6xl gap-8 px-5 pb-16 pt-10 md:grid-cols-2 md:items-center md:px-8 md:pb-24 md:pt-14">
             <div className="landing-fade-up">
               <p className="mb-2 inline-flex rounded-full border border-[#e9d8f3] bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.13em] text-[#6f47d8]">
-                USDC Split Payments
+                Stable Token Split Payments
               </p>
               <h1 className="text-4xl font-semibold tracking-tight text-[#5a37d1] md:text-6xl">
                 Say hello to FairSplit
@@ -36,7 +36,7 @@ export default function LandingPage() {
                 to confidentiality when needed.
               </p>
               <p className="mt-4 max-w-xl text-sm leading-relaxed text-[#5f5670] md:text-base">
-                FairSplit is a USDC-first split payments app for friends, roommates, teams, and
+                FairSplit is a stable-token split payments app for friends, roommates, teams, and
                 communities. Create expense splits, track who paid, send reminders, and settle
                 transparently on-chain with optional confidential payments for privacy-sensitive
                 moments.
@@ -128,7 +128,7 @@ export default function LandingPage() {
 
       <footer className="border-t border-[#e9e2f0] bg-[#f7f4fb]">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-5 py-6 text-sm text-[#5f5670] md:flex-row md:items-center md:justify-between md:px-8">
-          <p>FairSplit - USDC-first split payments</p>
+          <p>FairSplit - stable token split payments</p>
           <div className="flex flex-wrap items-center gap-4">
             <a
               href="https://github.com"

@@ -9,9 +9,15 @@ import { LayoutShell } from "@/components/LayoutShell";
 import { ParticipantList } from "@/components/ParticipantList";
 import { PaymentForm } from "@/components/PaymentForm";
 import { getContract } from "@/lib/contract";
-import { CONTRACT_ADDRESSES, SUPPORTED_CHAINS } from "@/lib/chains";
+import {
+  CONTRACT_ADDRESSES,
+  getTokenByAddress,
+  isBillSplitterConfigured,
+  SUPPORTED_CHAINS,
+} from "@/lib/chains";
 import { approveUsdc } from "@/lib/usdc";
 import {
+  isConfidentialTransferConfigured,
   performConfidentialPayment,
   preflightConfidentialPayment,
 } from "@/lib/stabletrust";
@@ -43,11 +49,25 @@ export default function BillDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
+  const billToken = getTokenByAddress(chainId, bill?.usdcToken);
+  const tokenSymbol = billToken?.symbol ?? "USDC";
+  const confidentialTokenSymbol = billToken?.confidentialSymbol ?? `c${tokenSymbol}`;
+  const contractConfigured = isBillSplitterConfigured(chainId);
+  const confidentialConfigured = isConfidentialTransferConfigured(chainId);
 
   useEffect(() => {
     async function load() {
       if (!billId || !chainId) return;
       try {
+        if (!contractConfigured) {
+          setError(
+            chainId === SUPPORTED_CHAINS.tempoTestnet.id
+              ? "Tempo BillSplitter is not configured yet."
+              : "Bill not found or contract not deployed."
+          );
+          setLoading(false);
+          return;
+        }
         const provider = new ethers.BrowserProvider(
           (window as unknown as { ethereum?: ethers.Eip1193Provider }).ethereum!
         );
@@ -74,13 +94,17 @@ export default function BillDetailPage() {
           }))
         );
       } catch (e) {
-        setError("Bill not found or contract not deployed.");
+        setError(
+          chainId === SUPPORTED_CHAINS.tempoTestnet.id
+            ? "Tempo bill not found, or Tempo BillSplitter is not configured."
+            : "Bill not found or contract not deployed."
+        );
       } finally {
         setLoading(false);
       }
     }
     load();
-  }, [billId, chainId]);
+  }, [billId, chainId, contractConfigured]);
 
   const payNormal = async () => {
     if (!walletClient || !bill || !chainId) return;
@@ -111,10 +135,10 @@ export default function BillDetailPage() {
       logActivity(
         "bill_paid_normal",
         "Bill paid (normal)",
-        `${ethers.formatUnits(bill.amountPerParticipant, 6)} USDC for ${bill.name}`,
+        `${ethers.formatUnits(bill.amountPerParticipant, 6)} ${tokenSymbol} for ${bill.name}`,
         { chainId, txHash: tx.hash as string, billId }
       );
-      showSuccessToast("Payment successful", "Normal USDC payment confirmed");
+      showSuccessToast("Payment successful", `Normal ${tokenSymbol} payment confirmed`);
       router.refresh();
       setStatuses((prev) =>
         prev.map((s, i) =>
@@ -133,6 +157,13 @@ export default function BillDetailPage() {
   const payConfidential = async () => {
     if (!walletClient || !bill || !chainId || !address) return;
     try {
+      if (!confidentialConfigured) {
+        throw new Error(
+          chainId === SUPPORTED_CHAINS.tempoTestnet.id
+            ? `Tempo confidential ${tokenSymbol} payments need NEXT_PUBLIC_TEMPO_STABLETRUST_ADDRESS before they can be used.`
+            : "Confidential payments are not configured for this chain."
+        );
+      }
       const signer = await walletClientToSigner(walletClient);
       const contract = getContract(signer, chainId);
       setPaymentStatus("Running confidential preflight checks...");
@@ -156,7 +187,7 @@ export default function BillDetailPage() {
             awaiting_signature: "Waiting for wallet signature...",
             creating_account: "Initializing confidential account...",
             checking_recipient: "Checking recipient confidential account...",
-            depositing: "Depositing to confidential balance...",
+            depositing: `Depositing to ${confidentialTokenSymbol} balance...`,
             transferring: "Submitting confidential transfer...",
             finalizing: "Waiting for finalization...",
             retrying: "Network is temporarily busy, retrying...",
@@ -207,7 +238,7 @@ export default function BillDetailPage() {
       logActivity(
         "bill_paid_confidential",
         "Bill paid (confidential)",
-        `${ethers.formatUnits(bill.amountPerParticipant, 6)} USDC confidential for ${bill.name}`,
+        `${ethers.formatUnits(bill.amountPerParticipant, 6)} ${tokenSymbol} confidential for ${bill.name}`,
         { chainId, txHash: markTxHash ?? confidentialTransferHash, billId }
       );
       showSuccessToast("Payment successful", "Confidential payment submitted");
@@ -249,7 +280,7 @@ export default function BillDetailPage() {
   const alreadyPaid = myIdx >= 0 && (statuses[myIdx]?.paid ?? false);
 
   const amountFormatted = bill
-    ? `${ethers.formatUnits(bill.amountPerParticipant, 6)} USDC`
+    ? `${ethers.formatUnits(bill.amountPerParticipant, 6)} ${tokenSymbol}`
     : "";
 
   return (
@@ -267,6 +298,21 @@ export default function BillDetailPage() {
         <p className="text-red-600">{error ?? "Bill not found."}</p>
       ) : (
         <div className="space-y-6">
+          {chainId === SUPPORTED_CHAINS.tempoTestnet.id && (
+            <div
+              className={`rounded-2xl border px-4 py-3 text-sm ${
+                contractConfigured
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : "border-amber-200 bg-amber-50 text-amber-800"
+              }`}
+            >
+              {contractConfigured
+                ? confidentialConfigured
+                  ? "Tempo BillSplitter and confidential routing are configured for this bill."
+                  : "Tempo BillSplitter is configured. Add Tempo StableTrust config to enable confidential bill payments."
+                : "Tempo bill execution is unavailable until NEXT_PUBLIC_TEMPO_BILLSPLITTER_ADDRESS is configured."}
+            </div>
+          )}
           <div className="rounded-3xl border border-white/70 bg-white/85 p-6 backdrop-blur">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-3xl font-semibold tracking-tight text-stone-900">{bill.name}</h2>
@@ -296,6 +342,8 @@ export default function BillDetailPage() {
               billId={billId}
               amountWei={bill.amountPerParticipant}
               amountFormatted={amountFormatted}
+              tokenSymbol={tokenSymbol}
+              confidentialTokenSymbol={confidentialTokenSymbol}
               onPayNormal={payNormal}
               onPayConfidential={payConfidential}
               isPayer={!!isPayer}
