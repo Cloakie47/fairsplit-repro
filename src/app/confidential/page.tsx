@@ -282,38 +282,26 @@ export default function ConfidentialPage() {
               : "Confidential flow is enabled on Base Sepolia and Arc testnet."}
           </p>
         )}
-        {isTempo && isSupportedChain && (
-          <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-            Tempo confidential wallet execution is enabled for the selected token. Direct confidential
-            payments and Tempo split settlement are still being phased in separately.
-          </p>
-        )}
 
-        {availableTokens.length > 0 && (
+        {availableTokens.length > 1 && (
           <div className="mt-4 rounded-xl border border-stone-200 bg-white p-4">
             <label className="block text-sm font-medium text-stone-700">Selected token</label>
-            {availableTokens.length > 1 ? (
-              <select
-                value={selectedTokenAddress}
-                onChange={(e) => {
-                  setSelectedTokenAddress(e.target.value);
-                  setBalance(null);
-                  setStatus(null);
-                  setStage(null);
-                }}
-                className="mt-2 w-full rounded-2xl border border-stone-200 px-4 py-3 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
-              >
-                {availableTokens.map((token) => (
-                  <option key={token.address} value={token.address}>
-                    {token.symbol}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <div className="mt-2 inline-flex rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-sm font-semibold text-stone-700">
-                {selectedToken?.symbol}
-              </div>
-            )}
+            <select
+              value={selectedTokenAddress}
+              onChange={(e) => {
+                setSelectedTokenAddress(e.target.value);
+                setBalance(null);
+                setStatus(null);
+                setStage(null);
+              }}
+              className="mt-2 w-full rounded-2xl border border-stone-200 px-4 py-3 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
+            >
+              {availableTokens.map((token) => (
+                <option key={token.address} value={token.address}>
+                  {token.symbol}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
