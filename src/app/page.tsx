@@ -28,7 +28,9 @@ export default function LandingHomePage() {
         <div className="landing-glow pointer-events-none fixed right-10 top-20 -z-10 h-52 w-52 rounded-full bg-cyan-300/25 blur-3xl" />
 
         <header className="mx-auto flex w-full max-w-[1200px] items-center justify-between px-6 py-7 md:px-10">
-          <h1 className="text-2xl font-bold tracking-tight text-[#1e293b] md:text-4xl">Fairsplit</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1e293b] md:text-4xl">
+            Fairsplit
+          </h1>
           <Link
             href="/app"
             className="rounded-full border border-[#2563eb] bg-[#3b82f6] px-6 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#2563eb]"
@@ -49,8 +51,8 @@ export default function LandingHomePage() {
               Split stable tokens. Reveal only what&apos;s required.
             </p>
             <p className="mt-5 max-w-2xl text-base leading-relaxed text-[#64748b] md:text-xl">
-              Create expense splits, track who paid, send reminders, and settle on-chain with
-              direct and confidential transfers.
+              Create expense splits, track who paid, send reminders, and settle
+              on-chain with direct and confidential transfers.
             </p>
 
             <div className="mt-11">
@@ -69,7 +71,7 @@ export default function LandingHomePage() {
             <a
               href="https://www.notion.so/End-User-Guide-How-People-Use-FairSplit-3176ffa741d780ba93c5f4ae6975feac?source=copy_link"
               target="_blank"
-              rel="noreferrer"
+              rel="noopener"
               className="transition hover:text-[#0f172a]"
             >
               How it works
@@ -78,7 +80,7 @@ export default function LandingHomePage() {
             <a
               href="https://www.notion.so/Fairsplit-Litepaper-3176ffa741d78024badbe45e9c892a14?source=copy_link"
               target="_blank"
-              rel="noreferrer"
+              rel="noopener"
               className="transition hover:text-[#0f172a]"
             >
               Litepaper
@@ -87,7 +89,7 @@ export default function LandingHomePage() {
             <a
               href="https://github.com/Cloakie47/fairsplit-repro"
               target="_blank"
-              rel="noreferrer"
+              rel="noopener"
               className="transition hover:text-[#0f172a]"
             >
               GitHub

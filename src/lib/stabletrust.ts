@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { ConfidentialTransferClient } from "@fairblock/stabletrust";
+import { ConfidentialTransferClient } from "@/app/stabletrust/src";
 import { getUsdcContract } from "@/lib/usdc";
 /**
  * Fairblock StableTrust — PLACEHOLDER for confidential payments.
@@ -12,7 +12,8 @@ import { getUsdcContract } from "@/lib/usdc";
 // Uncomment when integrating:
 // import { ConfidentialTransferClient } from "@fairblock/stabletrust";
 
-const TEMPO_STABLETRUST_ADDRESS = process.env.NEXT_PUBLIC_TEMPO_STABLETRUST_ADDRESS;
+const TEMPO_STABLETRUST_ADDRESS =
+  process.env.NEXT_PUBLIC_TEMPO_STABLETRUST_ADDRESS;
 
 const STABLETRUST_ADDRESSES = {
   84532: "0x962a8A7CD28BfFBb17C4F6Ec388782cca3ffd618", // Base testnet (current)
@@ -71,7 +72,11 @@ type StatusHandler = (status: ConfidentialStatus) => void;
 
 export function isConfidentialTransferConfigured(chainId?: number): boolean {
   if (!chainId) return false;
-  return !!STABLETRUST_ADDRESSES[chainId] && !!STABLETRUST_RPCS[chainId] && !!STABLETRUST_CHAIN_IDS[chainId];
+  return (
+    !!STABLETRUST_ADDRESSES[chainId] &&
+    !!STABLETRUST_RPCS[chainId] &&
+    !!STABLETRUST_CHAIN_IDS[chainId]
+  );
 }
 
 function isValidConfidentialKeys(value: unknown): value is ConfidentialKeys {
@@ -91,8 +96,15 @@ function keysScope(chainId: number, contractAddress?: string): string {
   return `${chainId}_${contract.toLowerCase()}`;
 }
 
-function keysStorageKey(chainId: number, address: string, contractAddress?: string) {
-  return `fairysplit_stabletrust_keys_${keysScope(chainId, contractAddress)}_${address.toLowerCase()}`;
+function keysStorageKey(
+  chainId: number,
+  address: string,
+  contractAddress?: string,
+) {
+  return `fairysplit_stabletrust_keys_${keysScope(
+    chainId,
+    contractAddress,
+  )}_${address.toLowerCase()}`;
 }
 
 function legacyKeysStorageKey(chainId: number, address: string) {
@@ -102,11 +114,13 @@ function legacyKeysStorageKey(chainId: number, address: string) {
 function getStoredKeys(
   chainId: number,
   address: string,
-  contractAddress?: string
+  contractAddress?: string,
 ): ConfidentialKeys | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(keysStorageKey(chainId, address, contractAddress));
+    const raw = window.localStorage.getItem(
+      keysStorageKey(chainId, address, contractAddress),
+    );
     if (!raw) return null;
     const parsed = JSON.parse(raw) as unknown;
     return isValidConfidentialKeys(parsed) ? parsed : null;
@@ -115,10 +129,15 @@ function getStoredKeys(
   }
 }
 
-function getLegacyUnscopedStoredKeys(chainId: number, address: string): ConfidentialKeys | null {
+function getLegacyUnscopedStoredKeys(
+  chainId: number,
+  address: string,
+): ConfidentialKeys | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(legacyKeysStorageKey(chainId, address));
+    const raw = window.localStorage.getItem(
+      legacyKeysStorageKey(chainId, address),
+    );
     if (!raw) return null;
     const parsed = JSON.parse(raw) as unknown;
     return isValidConfidentialKeys(parsed) ? parsed : null;
@@ -127,9 +146,16 @@ function getLegacyUnscopedStoredKeys(chainId: number, address: string): Confiden
   }
 }
 
-function setStoredKeys(chainId: number, address: string, keys: ConfidentialKeys) {
+function setStoredKeys(
+  chainId: number,
+  address: string,
+  keys: ConfidentialKeys,
+) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(keysStorageKey(chainId, address), JSON.stringify(keys));
+  window.localStorage.setItem(
+    keysStorageKey(chainId, address),
+    JSON.stringify(keys),
+  );
   // Clean up legacy key shape so we don't accidentally use stale state later.
   window.localStorage.removeItem(legacyKeysStorageKey(chainId, address));
 }
@@ -145,18 +171,30 @@ function getLegacyContractAddresses(chainId: number): string[] {
   const active = STABLETRUST_ADDRESSES[chainId]?.toLowerCase();
   return configured.filter((address, idx) => {
     const normalized = address.toLowerCase();
-    return normalized !== active && configured.findIndex((x) => x.toLowerCase() === normalized) === idx;
+    return (
+      normalized !== active &&
+      configured.findIndex((x) => x.toLowerCase() === normalized) === idx
+    );
   });
 }
 
 function isLikelyDecryptionFailure(error: unknown): boolean {
-  const msg = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-  return msg.includes("decryption failed") || msg.includes("private key is required");
+  const msg =
+    error instanceof Error
+      ? error.message.toLowerCase()
+      : String(error).toLowerCase();
+  return (
+    msg.includes("decryption failed") || msg.includes("private key is required")
+  );
 }
 
-function getClient(chainId: number, contractAddressOverride?: string): ConfidentialTransferClient {
+function getClient(
+  chainId: number,
+  contractAddressOverride?: string,
+): ConfidentialTransferClient {
   const rpc = STABLETRUST_RPCS[chainId];
-  const contractAddress = contractAddressOverride ?? STABLETRUST_ADDRESSES[chainId];
+  const contractAddress =
+    contractAddressOverride ?? STABLETRUST_ADDRESSES[chainId];
   const sdkChainId = STABLETRUST_CHAIN_IDS[chainId];
   if (!rpc || !contractAddress || !sdkChainId) {
     throw new Error("Confidential transfer is not configured for this chain.");
@@ -165,7 +203,8 @@ function getClient(chainId: number, contractAddressOverride?: string): Confident
 }
 
 function usdcRawToX100(amountRaw: bigint): bigint {
-  if (amountRaw <= BigInt(0)) throw new Error("Amount must be greater than zero.");
+  if (amountRaw <= BigInt(0))
+    throw new Error("Amount must be greater than zero.");
   // Keep raw token units (USDC 6 decimals) for SDK operations.
   return amountRaw;
 }
@@ -180,7 +219,8 @@ function usdcDisplayToX100(displayAmount: string): bigint {
 function x100ToUsdcNumber(amountX100: bigint): number {
   const formatted = ethers.formatUnits(amountX100, 6);
   const asNum = Number(formatted);
-  if (!Number.isFinite(asNum)) throw new Error("Amount too large to display safely.");
+  if (!Number.isFinite(asNum))
+    throw new Error("Amount too large to display safely.");
   return asNum;
 }
 
@@ -212,19 +252,33 @@ function asBigIntAmount(value: bigint | number | string): bigint {
 function extractTxHash(value: unknown): string | undefined {
   if (!value || typeof value !== "object") return undefined;
   const candidate = value as
-    | { hash?: unknown; txHash?: unknown; transactionHash?: unknown; txReceipt?: { transactionHash?: unknown } }
+    | {
+        hash?: unknown;
+        txHash?: unknown;
+        transactionHash?: unknown;
+        txReceipt?: { transactionHash?: unknown };
+      }
     | undefined;
-  const direct = candidate?.hash ?? candidate?.txHash ?? candidate?.transactionHash;
+  const direct =
+    candidate?.hash ?? candidate?.txHash ?? candidate?.transactionHash;
   if (typeof direct === "string" && direct.startsWith("0x")) return direct;
   const fromReceipt = candidate?.txReceipt?.transactionHash;
-  if (typeof fromReceipt === "string" && fromReceipt.startsWith("0x")) return fromReceipt;
+  if (typeof fromReceipt === "string" && fromReceipt.startsWith("0x"))
+    return fromReceipt;
   return undefined;
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string,
+): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | null = null;
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`${label} timed out. Please retry.`)), ms);
+    timer = setTimeout(
+      () => reject(new Error(`${label} timed out. Please retry.`)),
+      ms,
+    );
   });
   return Promise.race([promise, timeout]).finally(() => {
     if (timer) clearTimeout(timer);
@@ -257,12 +311,14 @@ function normalizeConfidentialError(error: unknown): Error {
 
   if (msg.includes("has not been authorized yet")) {
     return new Error(
-      "Wallet extension has not authorized localhost. Open the wallet extension, authorize http://localhost:3000, then retry."
+      "Wallet extension has not authorized localhost. Open the wallet extension, authorize http://localhost:3000, then retry.",
     );
   }
 
   if (msg.includes("hydration failed")) {
-    return new Error("App UI hydration failed. Refresh the page and retry the transaction.");
+    return new Error(
+      "App UI hydration failed. Refresh the page and retry the transaction.",
+    );
   }
 
   if (msg.includes("user rejected")) {
@@ -271,7 +327,7 @@ function normalizeConfidentialError(error: unknown): Error {
 
   if (msg.includes("insufficient allowance")) {
     return new Error(
-      "Token approval is missing or too low for confidential deposit. Approve the selected token and retry."
+      "Token approval is missing or too low for confidential deposit. Approve the selected token and retry.",
     );
   }
 
@@ -311,20 +367,26 @@ async function withRetry<T>(params: {
   }
 
   throw normalizeConfidentialError(
-    lastError instanceof Error ? lastError : new Error(`${params.label} failed.`)
+    lastError instanceof Error
+      ? lastError
+      : new Error(`${params.label} failed.`),
   );
 }
 
 async function waitForAccountReady(
   client: ConfidentialTransferClient,
   address: string,
-  onStatus?: StatusHandler
+  onStatus?: StatusHandler,
 ): Promise<boolean> {
   onStatus?.("finalizing");
   const attempts = 30;
   for (let i = 0; i < attempts; i++) {
     try {
-      const info = await withTimeout(client.getAccountInfo(address), 30000, "Account readiness");
+      const info = await withTimeout(
+        client.getAccountInfo(address),
+        30000,
+        "Account readiness",
+      );
       if (info?.exists) return true;
     } catch {
       // Best-effort readiness polling only.
@@ -334,13 +396,16 @@ async function waitForAccountReady(
   return false;
 }
 
-export function hasStoredConfidentialKeys(chainId: number, address: string): boolean {
+export function hasStoredConfidentialKeys(
+  chainId: number,
+  address: string,
+): boolean {
   return !!getStoredKeys(chainId, address);
 }
 
 async function refreshStoredKeysFromSigner(
   signer: ethers.Signer,
-  chainId: number
+  chainId: number,
 ): Promise<{ address: string; keys: ConfidentialKeys }> {
   const client = getClient(chainId);
   const address = (await signer.getAddress()).toLowerCase();
@@ -354,12 +419,12 @@ async function refreshStoredKeysFromSigner(
           maxAttempts: 30,
         }),
         120000,
-        "Account initialization"
+        "Account initialization",
       ),
   });
   if (!isValidConfidentialKeys(refreshed)) {
     throw new Error(
-      "Unable to recover confidential keys. Re-initialize account and retry."
+      "Unable to recover confidential keys. Re-initialize account and retry.",
     );
   }
   setStoredKeys(chainId, address, refreshed);
@@ -369,27 +434,30 @@ async function refreshStoredKeysFromSigner(
 async function readLegacyBalanceIfPresent(
   signer: ethers.Signer,
   tokenAddress: string,
-  chainId: number
+  chainId: number,
 ): Promise<boolean> {
   const address = (await signer.getAddress()).toLowerCase();
   const legacyUnscopedKeys = getLegacyUnscopedStoredKeys(chainId, address);
   for (const legacyContract of getLegacyContractAddresses(chainId)) {
     const legacyKeys =
-      getStoredKeys(chainId, address, legacyContract) ??
-      legacyUnscopedKeys;
+      getStoredKeys(chainId, address, legacyContract) ?? legacyUnscopedKeys;
     if (!legacyKeys) continue;
     try {
       const legacyClient = getClient(chainId, legacyContract);
       const account = await withTimeout(
         legacyClient.getAccountInfo(address),
         30000,
-        "Legacy account check"
+        "Legacy account check",
       );
       if (!account?.exists) continue;
       const legacyBalance = await withTimeout(
-        legacyClient.getConfidentialBalance(address, legacyKeys.privateKey, tokenAddress),
+        legacyClient.getConfidentialBalance(
+          address,
+          legacyKeys.privateKey,
+          tokenAddress,
+        ),
         60000,
-        "Legacy balance refresh"
+        "Legacy balance refresh",
       );
       if (asBigIntAmount(legacyBalance.amount) > BigInt(0)) return true;
     } catch {
@@ -404,7 +472,7 @@ async function ensureStableTrustAllowance(
   tokenAddress: string,
   chainId: number,
   requiredX100: bigint,
-  onStatus?: StatusHandler
+  onStatus?: StatusHandler,
 ): Promise<void> {
   const spender = STABLETRUST_ADDRESSES[chainId];
   if (!spender) {
@@ -421,7 +489,7 @@ async function ensureStableTrustAllowance(
   const approveTx = await withTimeout(
     usdc.approve(spender, maxApproval),
     120000,
-    "USDC approval"
+    "USDC approval",
   );
   onStatus?.("finalizing");
   await withTimeout(approveTx.wait(), 180000, "USDC approval confirmation");
@@ -434,7 +502,7 @@ export async function getSignerAddress(signer: ethers.Signer): Promise<string> {
 export async function ensureConfidentialAccount(
   signer: ethers.Signer,
   chainId: number,
-  onStatus?: StatusHandler
+  onStatus?: StatusHandler,
 ): Promise<ConfidentialKeys> {
   const address = (await signer.getAddress()).toLowerCase();
   const existing = getStoredKeys(chainId, address);
@@ -454,12 +522,14 @@ export async function ensureConfidentialAccount(
           maxAttempts: 30,
         }),
         120000,
-        "Account initialization"
+        "Account initialization",
       ),
   });
   if (!isValidConfidentialKeys(derived)) {
     clearStoredKeys(chainId, address);
-    throw new Error("Failed to derive confidential keys. Please retry initialization.");
+    throw new Error(
+      "Failed to derive confidential keys. Please retry initialization.",
+    );
   }
   setStoredKeys(chainId, address, derived);
   // Base testnet may finalize/index slower than the SDK polling window.
@@ -470,8 +540,12 @@ export async function ensureConfidentialAccount(
 
 async function requireLocalKeysAndAccountReady(
   signer: ethers.Signer,
-  chainId: number
-): Promise<{ client: ConfidentialTransferClient; address: string; keys: ConfidentialKeys }> {
+  chainId: number,
+): Promise<{
+  client: ConfidentialTransferClient;
+  address: string;
+  keys: ConfidentialKeys;
+}> {
   const client = getClient(chainId);
   const address = (await signer.getAddress()).toLowerCase();
   const keys = getStoredKeys(chainId, address);
@@ -481,11 +555,11 @@ async function requireLocalKeysAndAccountReady(
   const accountInfo = await withTimeout(
     client.getAccountInfo(address),
     30000,
-    "Confidential account check"
+    "Confidential account check",
   );
   if (!accountInfo?.exists) {
     throw new Error(
-      "Confidential account is still finalizing. Wait a moment, then retry."
+      "Confidential account is still finalizing. Wait a moment, then retry.",
     );
   }
   return { client, address, keys };
@@ -496,19 +570,23 @@ export async function preflightConfidentialPayment(
   recipient: string,
   tokenAddress: string,
   amountRaw: bigint,
-  chainId: number
+  chainId: number,
 ): Promise<ConfidentialPreflightSummary> {
-  if (!ethers.isAddress(recipient)) throw new Error("Recipient address is invalid.");
-  const { client, address, keys } = await requireLocalKeysAndAccountReady(signer, chainId);
+  if (!ethers.isAddress(recipient))
+    throw new Error("Recipient address is invalid.");
+  const { client, address, keys } = await requireLocalKeysAndAccountReady(
+    signer,
+    chainId,
+  );
 
   const recipientInfo = await withTimeout(
     client.getAccountInfo(recipient),
     30000,
-    "Recipient account check"
+    "Recipient account check",
   );
   if (!recipientInfo?.exists) {
     throw new Error(
-      "Recipient has no confidential account yet. Ask them to initialize Confidential Wallet first."
+      "Recipient has no confidential account yet. Ask them to initialize Confidential Wallet first.",
     );
   }
 
@@ -516,7 +594,7 @@ export async function preflightConfidentialPayment(
   const balance = await withTimeout(
     client.getConfidentialBalance(address, keys.privateKey, tokenAddress),
     60000,
-    "Balance refresh"
+    "Balance refresh",
   );
   const availableX100 = asBigIntAmount(balance.available.amount);
   const shortfallX100 =
@@ -524,8 +602,8 @@ export async function preflightConfidentialPayment(
   if (shortfallX100 > BigInt(0)) {
     throw new Error(
       `Insufficient confidential balance for payment. Need ${x100ToUsdcDisplay(
-        shortfallX100
-      )} more. Open Confidential Wallet and convert more of the selected token first.`
+        shortfallX100,
+      )} more. Open Confidential Wallet and convert more of the selected token first.`,
     );
   }
   return {
@@ -539,14 +617,17 @@ export async function preflightConfidentialTopUp(
   signer: ethers.Signer,
   tokenAddress: string,
   displayAmount: string,
-  chainId: number
+  chainId: number,
 ): Promise<ConfidentialPreflightSummary> {
-  const { client, address, keys } = await requireLocalKeysAndAccountReady(signer, chainId);
+  const { client, address, keys } = await requireLocalKeysAndAccountReady(
+    signer,
+    chainId,
+  );
   void usdcDisplayToX100(displayAmount);
   const balance = await withTimeout(
     client.getConfidentialBalance(address, keys.privateKey, tokenAddress),
     60000,
-    "Balance refresh"
+    "Balance refresh",
   );
   return {
     address,
@@ -559,18 +640,21 @@ export async function preflightConfidentialWithdraw(
   signer: ethers.Signer,
   tokenAddress: string,
   displayAmount: string,
-  chainId: number
+  chainId: number,
 ): Promise<ConfidentialPreflightSummary> {
-  const { client, address, keys } = await requireLocalKeysAndAccountReady(signer, chainId);
+  const { client, address, keys } = await requireLocalKeysAndAccountReady(
+    signer,
+    chainId,
+  );
   const amountX100 = usdcDisplayToX100(displayAmount);
   const balance = await withTimeout(
     client.getConfidentialBalance(address, keys.privateKey, tokenAddress),
     60000,
-    "Balance refresh"
+    "Balance refresh",
   );
   if (amountX100 > asBigIntAmount(balance.available.amount)) {
     throw new Error(
-      "Withdraw amount is greater than available confidential balance."
+      "Withdraw amount is greater than available confidential balance.",
     );
   }
   return {
@@ -586,9 +670,10 @@ export async function performConfidentialPayment(
   tokenAddress: string,
   amountRaw: bigint,
   chainId: number,
-  onStatus?: StatusHandler
+  onStatus?: StatusHandler,
 ): Promise<string | undefined> {
-  if (!ethers.isAddress(recipient)) throw new Error("Recipient address is invalid.");
+  if (!ethers.isAddress(recipient))
+    throw new Error("Recipient address is invalid.");
 
   const client = getClient(chainId);
   const senderKeys = await ensureConfidentialAccount(signer, chainId, onStatus);
@@ -599,11 +684,11 @@ export async function performConfidentialPayment(
   const recipientInfo = await withTimeout(
     client.getAccountInfo(recipient),
     30000,
-    "Recipient account check"
+    "Recipient account check",
   );
   if (!recipientInfo?.exists) {
     throw new Error(
-      "Recipient has no confidential account yet. Ask them to initialize Confidential Wallet first."
+      "Recipient has no confidential account yet. Ask them to initialize Confidential Wallet first.",
     );
   }
 
@@ -617,9 +702,13 @@ export async function performConfidentialPayment(
     retries: 1,
     action: () =>
       withTimeout(
-        client.getConfidentialBalance(senderAddress, senderKeys.privateKey, tokenAddress),
+        client.getConfidentialBalance(
+          senderAddress,
+          senderKeys.privateKey,
+          tokenAddress,
+        ),
         60000,
-        "Balance refresh"
+        "Balance refresh",
       ),
   });
 
@@ -630,8 +719,8 @@ export async function performConfidentialPayment(
   if (shortfallX100 > BigInt(0)) {
     throw new Error(
       `Insufficient confidential balance for payment. Need ${x100ToUsdcDisplay(
-        shortfallX100
-      )} more. Open Confidential Wallet and convert more of the selected token first.`
+        shortfallX100,
+      )} more. Open Confidential Wallet and convert more of the selected token first.`,
     );
   }
   onStatus?.("transferring");
@@ -641,11 +730,17 @@ export async function performConfidentialPayment(
     retries: 0,
     action: () =>
       withTimeout(
-        client.confidentialTransfer(signer, recipient, tokenAddress, toSdkAmount(amountX100), {
-          waitForFinalization: true,
-        }),
+        client.confidentialTransfer(
+          signer,
+          recipient,
+          tokenAddress,
+          toSdkAmount(amountX100),
+          {
+            waitForFinalization: true,
+          },
+        ),
         180000,
-        "Confidential transfer"
+        "Confidential transfer",
       ),
   });
   return extractTxHash(transferResult);
@@ -656,12 +751,18 @@ export async function depositUsdcToConfidential(
   tokenAddress: string,
   displayAmount: string,
   chainId: number,
-  onStatus?: StatusHandler
+  onStatus?: StatusHandler,
 ): Promise<string | undefined> {
   const client = getClient(chainId);
   await ensureConfidentialAccount(signer, chainId, onStatus);
   const amountX100 = usdcDisplayToX100(displayAmount);
-  await ensureStableTrustAllowance(signer, tokenAddress, chainId, amountX100, onStatus);
+  await ensureStableTrustAllowance(
+    signer,
+    tokenAddress,
+    chainId,
+    amountX100,
+    onStatus,
+  );
 
   onStatus?.("depositing");
   const depositResult = await withRetry({
@@ -670,11 +771,16 @@ export async function depositUsdcToConfidential(
     retries: 0,
     action: () =>
       withTimeout(
-        client.confidentialDeposit(signer, tokenAddress, toSdkAmount(amountX100), {
-          waitForFinalization: true,
-        }),
+        client.confidentialDeposit(
+          signer,
+          tokenAddress,
+          toSdkAmount(amountX100),
+          {
+            waitForFinalization: true,
+          },
+        ),
         180000,
-        "Confidential top up"
+        "Confidential top up",
       ),
   });
   return extractTxHash(depositResult);
@@ -684,7 +790,7 @@ export async function claimPendingConfidentialBalance(
   signer: ethers.Signer,
   tokenAddress: string,
   chainId: number,
-  onStatus?: StatusHandler
+  onStatus?: StatusHandler,
 ): Promise<string | undefined> {
   const client = getClient(chainId);
   const address = (await signer.getAddress()).toLowerCase();
@@ -695,7 +801,7 @@ export async function claimPendingConfidentialBalance(
   const balance = await withTimeout(
     client.getConfidentialBalance(address, keys.privateKey, tokenAddress),
     60000,
-    "Balance refresh"
+    "Balance refresh",
   );
   const pending = asBigIntAmount(balance.pending.amount);
   if (pending <= BigInt(0)) {
@@ -704,7 +810,13 @@ export async function claimPendingConfidentialBalance(
 
   // Trigger state progression with a minimal top-up (0.01 USDC).
   const microAmount = BigInt(10000);
-  await ensureStableTrustAllowance(signer, tokenAddress, chainId, microAmount, onStatus);
+  await ensureStableTrustAllowance(
+    signer,
+    tokenAddress,
+    chainId,
+    microAmount,
+    onStatus,
+  );
   onStatus?.("depositing");
   const claimResult = await withRetry({
     label: "Pending claim trigger",
@@ -712,11 +824,16 @@ export async function claimPendingConfidentialBalance(
     retries: 0,
     action: () =>
       withTimeout(
-        client.confidentialDeposit(signer, tokenAddress, toSdkAmount(microAmount), {
-          waitForFinalization: true,
-        }),
+        client.confidentialDeposit(
+          signer,
+          tokenAddress,
+          toSdkAmount(microAmount),
+          {
+            waitForFinalization: true,
+          },
+        ),
         180000,
-        "Pending claim trigger"
+        "Pending claim trigger",
       ),
   });
   return extractTxHash(claimResult);
@@ -726,7 +843,7 @@ export async function getConfidentialBalanceSummary(
   signer: ethers.Signer,
   tokenAddress: string,
   chainId: number,
-  onStatus?: StatusHandler
+  onStatus?: StatusHandler,
 ): Promise<{ total: number; available: number; pending: number }> {
   const client = getClient(chainId);
   const address = (await signer.getAddress()).toLowerCase();
@@ -742,7 +859,7 @@ export async function getConfidentialBalanceSummary(
     balance = await withTimeout(
       client.getConfidentialBalance(address, keys.privateKey, tokenAddress),
       60000,
-      "Balance refresh"
+      "Balance refresh",
     );
   } catch (error) {
     if (!isLikelyDecryptionFailure(error)) throw error;
@@ -752,18 +869,22 @@ export async function getConfidentialBalanceSummary(
       balance = await withTimeout(
         client.getConfidentialBalance(address, keys.privateKey, tokenAddress),
         60000,
-        "Balance refresh"
+        "Balance refresh",
       );
     } catch (recoveryError) {
-      const hasLegacyBalance = await readLegacyBalanceIfPresent(signer, tokenAddress, chainId);
+      const hasLegacyBalance = await readLegacyBalanceIfPresent(
+        signer,
+        tokenAddress,
+        chainId,
+      );
       if (hasLegacyBalance) {
         throw new Error(
-          "Detected confidential funds on a previous StableTrust deployment. Your current app is using the updated deployment, so old balances cannot be decrypted here. Use the previous deployment to withdraw/migrate funds, then initialize this deployment again."
+          "Detected confidential funds on a previous StableTrust deployment. Your current app is using the updated deployment, so old balances cannot be decrypted here. Use the previous deployment to withdraw/migrate funds, then initialize this deployment again.",
         );
       }
       if (!isLikelyDecryptionFailure(recoveryError)) throw recoveryError;
       throw new Error(
-        "Confidential key mismatch detected. Re-initialize Confidential Wallet and confirm the signature prompt from the same wallet/account, then retry refresh."
+        "Confidential key mismatch detected. Re-initialize Confidential Wallet and confirm the signature prompt from the same wallet/account, then retry refresh.",
       );
     }
   }
@@ -779,7 +900,7 @@ export async function withdrawConfidentialToUsdc(
   tokenAddress: string,
   displayAmount: string,
   chainId: number,
-  onStatus?: StatusHandler
+  onStatus?: StatusHandler,
 ): Promise<string | undefined> {
   const client = getClient(chainId);
   const address = (await signer.getAddress()).toLowerCase();
@@ -798,7 +919,7 @@ export async function withdrawConfidentialToUsdc(
           waitForFinalization: true,
         }),
         180000,
-        "Confidential withdraw"
+        "Confidential withdraw",
       ),
   });
   return extractTxHash(withdrawResult);
