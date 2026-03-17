@@ -12,10 +12,7 @@ export function ToastHost() {
 
   useEffect(() => {
     const unsubscribe = subscribeToasts((payload) => {
-      const next: ToastItem = {
-        ...payload,
-        createdAt: Date.now(),
-      };
+      const next: ToastItem = { ...payload, createdAt: Date.now() };
       setToasts((prev) => [...prev, next]);
       window.setTimeout(() => {
         setToasts((prev) => prev.filter((item) => item.id !== payload.id));
@@ -27,20 +24,38 @@ export function ToastHost() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-[230] flex w-[min(90vw,22rem)] flex-col gap-2">
+    <div className="pointer-events-none fixed bottom-4 right-4 z-[230] flex w-80 flex-col gap-2">
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className="rounded-xl border border-emerald-200 bg-white/95 px-3.5 py-3 text-stone-900"
+          className={`pointer-events-auto border-2 border-brand-black p-3 shadow-brutal ${
+            toast.kind === "error"
+              ? "border-brand-red bg-white"
+              : "bg-brand-cream"
+          }`}
         >
-          <div className="flex items-start gap-2.5">
-            <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-xs font-bold text-white">
-              ✓
+          <div className="flex items-start gap-2">
+            <span
+              className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center border-2 font-mono text-xs font-bold text-white ${
+                toast.kind === "error"
+                  ? "border-brand-black bg-brand-red"
+                  : "border-brand-black bg-brand-green"
+              }`}
+            >
+              {toast.kind === "error" ? "✕" : "✓"}
             </span>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{toast.title}</p>
+              <p
+                className={`truncate font-grotesk text-sm font-bold ${
+                  toast.kind === "error" ? "text-brand-red" : "text-brand-black"
+                }`}
+              >
+                {toast.title}
+              </p>
               {toast.description && (
-                <p className="mt-0.5 text-xs text-stone-600">{toast.description}</p>
+                <p className="mt-0.5 font-mono text-xs text-brand-muted">
+                  {toast.description}
+                </p>
               )}
             </div>
           </div>

@@ -1,29 +1,27 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Space_Grotesk, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 
-const inter = Inter({ subsets: ["latin"] });
-const MINIAPP_HOME_URL = "https://fairsplit-repro.vercel.app";
-const MINIAPP_EMBED = JSON.stringify({
-  version: "next",
-  imageUrl: `${MINIAPP_HOME_URL}/miniapp/landing-preview.png`,
-  button: {
-    title: "Open FairSplit",
-    action: {
-      type: "launch_miniapp",
-      name: "Launch FairSplit",
-      url: MINIAPP_HOME_URL,
-    },
-  },
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space-grotesk",
+  weight: ["400", "500", "600", "700"],
 });
+
+const spaceMono = Space_Mono({
+  subsets: ["latin"],
+  variable: "--font-space-mono",
+  weight: ["400", "700"],
+});
+
+const MINIAPP_HOME_URL = "https://fairsplit-repro.vercel.app";
 
 export const metadata: Metadata = {
   title: "FairSplit — Bill Splitting",
-  description: "Split bills with on-chain settlement",
+  description: "Split bills with on-chain settlement using USDC on Base",
   other: {
-    "base:app_id": "69a53df76d5151991e105996",
-    "fc:miniapp": MINIAPP_EMBED,
+    "base:app_id": "6979d24e2dbd4b464042adc0",
   },
 };
 
@@ -34,7 +32,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body
+        className={`${spaceGrotesk.variable} ${spaceMono.variable} font-grotesk dot-grid`}
+      >
         <Providers>{children}</Providers>
       </body>
     </html>

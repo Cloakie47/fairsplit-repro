@@ -331,6 +331,16 @@ function normalizeConfidentialError(error: unknown): Error {
     );
   }
 
+  if (
+    msg.includes("pinata jwt is not set") ||
+    msg.includes("react_app_pinata_jwt is not set") ||
+    msg.includes("failed to upload proof to ipfs")
+  ) {
+    return new Error(
+      "Tempo confidential transfers need a Pinata JWT for proof uploads. Add `PINATA_JWT` to your `.env.local` (or `NEXT_PUBLIC_PINATA_JWT`), restart `npm run dev`, and retry.",
+    );
+  }
+
   return error instanceof Error ? error : new Error(raw);
 }
 

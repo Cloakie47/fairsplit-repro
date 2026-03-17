@@ -2,321 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --surface: #fafaf9;
-  --muted: #78716c;
-  --border: #e7e5e4;
-}
-
-body {
-  background: var(--surface);
-  color: #292524;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-}
-
-button,
-a[role="button"] {
-  transition:
-    transform 120ms ease,
-    filter 180ms ease;
-}
-
-button:hover,
-a[role="button"]:hover {
-  filter: brightness(1.02);
-}
-
-button:active,
-a[role="button"]:active {
-  transform: translateY(1px) scale(0.985);
-}
-
-.nav-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-  border-radius: 0.9rem;
-  background: #0a0a0a;
-  color: #fff;
-  transition:
-    transform 140ms ease,
-    background-color 200ms ease;
-}
-
-.nav-pill:hover {
-  transform: translateY(-1px);
-  background: #1f1f1f;
-}
-
-.sidebar-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
-  width: 100%;
-  border-radius: 0.9rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: transparent;
-  color: rgba(255, 255, 255, 0.8);
-  padding: 0.65rem 0.85rem;
-  font-size: 0.88rem;
-  font-weight: 600;
-  line-height: 1.25rem;
-  transition:
-    transform 120ms ease,
-    background-color 160ms ease,
-    border-color 160ms ease;
-}
-
-.sidebar-link:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.24);
-  color: #fff;
-}
-
-.sidebar-link-active {
-  background: #f9d6f4;
-  color: #151313;
-  font-weight: 700;
-  border-color: #f9d6f4;
-}
-
-.glass-surface {
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(12px);
-}
-
-.header-shell {
-  background: rgba(255, 255, 255, 0.62);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
-}
-
-@keyframes sway-slow {
-  0% {
-    transform: translate3d(0, 0, 0);
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-radius: 0 !important;
   }
-  50% {
-    transform: translate3d(10px, -8px, 0);
+
+  html {
+    scroll-behavior: smooth;
   }
-  100% {
-    transform: translate3d(0, 0, 0);
+
+  body {
+    font-family: var(--font-space-grotesk), sans-serif;
+    color: #0A0A0A;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background-color: #D4F5A2;
+    color: #0A0A0A;
   }
 }
 
-@keyframes sway-mid {
-  0% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(-12px, -10px, 0);
-  }
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-@keyframes sway-fast {
-  0% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(8px, -6px, 0);
-  }
-  100% {
-    transform: translate3d(0, 0, 0);
+@layer components {
+  .dot-grid {
+    background-color: #FFFFF8;
+    background-image: radial-gradient(
+      circle,
+      rgba(10, 10, 10, 0.07) 1px,
+      transparent 1px
+    );
+    background-size: 22px 22px;
   }
 }
 
-.animate-sway-slow {
-  animation: sway-slow 11s ease-in-out infinite;
-}
-
-.animate-sway-mid {
-  animation: sway-mid 9s ease-in-out infinite;
-}
-
-.animate-sway-fast {
-  animation: sway-fast 7s ease-in-out infinite;
-}
-
-@keyframes seed-float-a {
-  0% {
-    transform: translate3d(0, 0, 0) rotate(0deg);
-  }
-  50% {
-    transform: translate3d(10px, -18px, 0) rotate(3deg);
-  }
-  100% {
-    transform: translate3d(0, 0, 0) rotate(0deg);
-  }
-}
-
-@keyframes seed-float-b {
-  0% {
-    transform: translate3d(0, 0, 0) rotate(0deg);
-  }
-  50% {
-    transform: translate3d(-12px, -14px, 0) rotate(-4deg);
-  }
-  100% {
-    transform: translate3d(0, 0, 0) rotate(0deg);
-  }
-}
-
-@keyframes seed-float-c {
-  0% {
-    transform: translate3d(0, 0, 0) rotate(0deg);
-  }
-  50% {
-    transform: translate3d(7px, -12px, 0) rotate(5deg);
-  }
-  100% {
-    transform: translate3d(0, 0, 0) rotate(0deg);
-  }
-}
-
-.dandelion-seed {
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  border-radius: 9999px;
-  opacity: 0.34;
-  will-change: transform;
-}
-
-.dandelion-seed::before {
-  content: "";
-  position: absolute;
-  left: 2px;
-  top: -14px;
-  width: 1px;
-  height: 14px;
-  background: currentColor;
-  opacity: 0.55;
-}
-
-.seed-blue {
-  background: rgba(59, 130, 246, 0.55);
-  color: rgba(59, 130, 246, 0.6);
-}
-
-.seed-orange {
-  background: rgba(249, 115, 22, 0.55);
-  color: rgba(249, 115, 22, 0.6);
-}
-
-.seed-neutral {
-  background: rgba(120, 113, 108, 0.45);
-  color: rgba(120, 113, 108, 0.5);
-}
-
-.seed-one {
-  left: 10%;
-  top: 20%;
-  animation: seed-float-a 11s ease-in-out infinite;
-}
-
-.seed-two {
-  left: 18%;
-  top: 14%;
-  animation: seed-float-b 9.5s ease-in-out infinite;
-}
-
-.seed-three {
-  left: 78%;
-  top: 18%;
-  animation: seed-float-c 10.5s ease-in-out infinite;
-}
-
-.seed-four {
-  left: 84%;
-  top: 12%;
-  animation: seed-float-b 12s ease-in-out infinite;
-}
-
-.seed-five {
-  left: 54%;
-  top: 8%;
-  animation: seed-float-a 8.8s ease-in-out infinite;
-}
-
-.seed-six {
-  left: 66%;
-  top: 24%;
-  animation: seed-float-c 11.7s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-sway-slow,
-  .animate-sway-mid,
-  .animate-sway-fast,
-  .seed-one,
-  .seed-two,
-  .seed-three,
-  .seed-four,
-  .seed-five,
-  .seed-six {
-    animation: none;
-  }
-}
-
-@keyframes landing-float {
-  0% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
-  100% {
-    transform: translateY(0px);
-  }
-}
-
-@keyframes landing-glow {
-  0% {
-    transform: translate3d(0, 0, 0) scale(1);
-    opacity: 0.26;
-  }
-  50% {
-    transform: translate3d(8px, -12px, 0) scale(1.05);
-    opacity: 0.4;
-  }
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-    opacity: 0.26;
-  }
-}
-
-@keyframes landing-fade-up {
-  0% {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.landing-float {
-  animation: landing-float 6.8s ease-in-out infinite;
-}
-
-.landing-glow {
-  animation: landing-glow 12s ease-in-out infinite;
-}
-
-.landing-fade-up {
-  animation: landing-fade-up 620ms ease-out both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .landing-float,
-  .landing-glow,
-  .landing-fade-up {
-    animation: none;
+@layer components {
+  .label-text {
+    font-family: var(--font-space-mono), monospace;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
   }
 }

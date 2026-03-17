@@ -1,356 +1,304 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import { useAccount, useChainId } from "wagmi";
-import { useWalletClient } from "wagmi";
+import { useEffect, useState, useCallback } from "react";
+import { useParams } from "next/navigation";
+import { useAccount, useChainId, useWalletClient } from "wagmi";
+import { ethers } from "ethers";
+
 import { LayoutShell } from "@/components/LayoutShell";
-import { ParticipantList } from "@/components/ParticipantList";
-import { PaymentForm } from "@/components/PaymentForm";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { ModeToggle } from "@/components/ui/ModeToggle";
+import { TransactionModal } from "@/components/TransactionModal";
+
 import { getContract } from "@/lib/contract";
+import { walletClientToSigner } from "@/lib/wallet";
 import {
-  CONTRACT_ADDRESSES,
+  getDefaultTokenForChain,
   getTokenByAddress,
-  isBillSplitterConfigured,
-  SUPPORTED_CHAINS,
+  CONTRACT_ADDRESSES,
 } from "@/lib/chains";
 import { approveUsdc } from "@/lib/usdc";
+import { logActivity } from "@/lib/activity";
+import { showSuccessToast } from "@/lib/toast";
+import { markSplitRequestPaid } from "@/lib/requests";
+import { resolveDisplayName } from "@/lib/friends";
 import {
   isConfidentialTransferConfigured,
   performConfidentialPayment,
   preflightConfidentialPayment,
 } from "@/lib/stabletrust";
-import { logActivity } from "@/lib/activity";
-import { markSplitRequestPaid } from "@/lib/requests";
-import { showSuccessToast } from "@/lib/toast";
-import { getChainLabel } from "@/lib/explorer";
-import { ethers } from "ethers";
-import { walletClientToSigner } from "@/lib/wallet";
+
+interface BillData {
+  creator: string;
+  usdcToken: string;
+  name: string;
+  description: string;
+  amountPerParticipant: bigint;
+  participants: string[];
+}
+
+interface ParticipantStatus {
+  paid: boolean;
+  isConfidential: boolean;
+  paidAt: bigint;
+}
 
 export default function BillDetailPage() {
   const params = useParams();
-  const router = useRouter();
-  const billId = params.id as string;
-  const chainId = useChainId();
+  const billId = typeof params.id === "string" ? decodeURIComponent(params.id) : "";
   const { address, isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
-  const [bill, setBill] = useState<{
-    creator: string;
-    usdcToken: string;
-    name: string;
-    description: string;
-    amountPerParticipant: bigint;
-    participants: string[];
-  } | null>(null);
-  const [statuses, setStatuses] = useState<
-    { paid: boolean; isConfidential: boolean }[]
-  >([]);
-  const [loading, setLoading] = useState(true);
+  const chainId = useChainId();
+
+  const [bill, setBill] = useState<BillData | null>(null);
+  const [statuses, setStatuses] = useState<Map<string, ParticipantStatus>>(new Map());
+  const [mode, setMode] = useState<"normal" | "confidential">("normal");
+  const [loading, setLoading] = useState(false);
+  const [stage, setStage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
-  const billToken = getTokenByAddress(chainId, bill?.usdcToken);
-  const tokenSymbol = billToken?.symbol ?? "USDC";
-  const confidentialTokenSymbol = billToken?.confidentialSymbol ?? `c${tokenSymbol}`;
-  const contractConfigured = isBillSplitterConfigured(chainId);
-  const confidentialConfigured = isConfidentialTransferConfigured(chainId);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  const fetchBill = useCallback(async () => {
+    if (!chainId || !billId) return;
+    try {
+      const rpc = new ethers.JsonRpcProvider(
+        chainId === 84532
+          ? "https://sepolia.base.org"
+          : chainId === 5042002
+            ? "https://rpc.testnet.arc.network"
+            : "https://rpc.moderato.tempo.xyz"
+      );
+      const contract = getContract(rpc, chainId);
+      const data = await contract.getBill(billId);
+      const billData: BillData = {
+        creator: data[0] as string,
+        usdcToken: data[1] as string,
+        name: data[2] as string,
+        description: data[3] as string,
+        amountPerParticipant: data[4] as bigint,
+        participants: data[5] as string[],
+      };
+      setBill(billData);
+
+      const statusMap = new Map<string, ParticipantStatus>();
+      for (const p of billData.participants) {
+        try {
+          const s = await contract.getParticipantStatus(billId, p);
+          statusMap.set(p.toLowerCase(), {
+            paid: s[0] as boolean,
+            isConfidential: s[1] as boolean,
+            paidAt: s[2] as bigint,
+          });
+        } catch {
+          statusMap.set(p.toLowerCase(), {
+            paid: false,
+            isConfidential: false,
+            paidAt: BigInt(0),
+          });
+        }
+      }
+      setStatuses(statusMap);
+    } catch (e) {
+      setFetchError(e instanceof Error ? e.message : "Failed to load bill.");
+    }
+  }, [chainId, billId]);
 
   useEffect(() => {
-    async function load() {
-      if (!billId || !chainId) return;
-      try {
-        if (!contractConfigured) {
-          setError(
-            chainId === SUPPORTED_CHAINS.tempoTestnet.id
-              ? "Tempo BillSplitter is not configured yet."
-              : "Bill not found or contract not deployed."
-          );
-          setLoading(false);
-          return;
-        }
-        const provider = new ethers.BrowserProvider(
-          (window as unknown as { ethereum?: ethers.Eip1193Provider }).ethereum!
-        );
-        const contract = getContract(provider, chainId);
-        const [creator, usdcToken, name, description, amountPerParticipant, participants] =
-          await contract.getBill(billId);
-        const statusesData = await Promise.all(
-          participants.map((p: string) =>
-            contract.getParticipantStatus(billId, p)
-          )
-        );
-        setBill({
-          creator,
-          usdcToken,
-          name,
-          description,
-          amountPerParticipant,
-          participants,
+    void fetchBill();
+  }, [fetchBill]);
+
+  const token = bill ? getTokenByAddress(chainId, bill.usdcToken) : getDefaultTokenForChain(chainId);
+  const tokenSymbol = token?.symbol ?? "USDC";
+  const tokenDecimals = token?.decimals ?? 6;
+  const confidentialConfigured = isConfidentialTransferConfigured(chainId);
+
+  const myStatus = address ? statuses.get(address.toLowerCase()) : undefined;
+  const alreadyPaid = myStatus?.paid ?? false;
+
+  const onPay = async () => {
+    if (!isConnected || !walletClient || !address || !bill) return;
+    setLoading(true);
+    setError(null);
+    setStage(null);
+    try {
+      const signer = await walletClientToSigner(walletClient);
+      const amountRaw = bill.amountPerParticipant;
+
+      if (mode === "normal") {
+        setStage("Approving token...");
+        await approveUsdc(bill.usdcToken, CONTRACT_ADDRESSES[chainId], amountRaw, signer);
+        setStage("Paying bill...");
+        const contract = getContract(signer, chainId);
+        const tx = await contract.payNormal(billId);
+        setStage("Confirming...");
+        await tx.wait();
+        logActivity(address, "bill_paid_normal", `Paid "${bill.name}"`, `${ethers.formatUnits(amountRaw, tokenDecimals)} ${tokenSymbol}`, {
+          chainId,
+          txHash: tx.hash as string,
+          billId,
         });
-        setStatuses(
-          statusesData.map(([paid, isConfidential]: [boolean, boolean]) => ({
-            paid,
-            isConfidential,
-          }))
-        );
-      } catch (e) {
-        setError(
-          chainId === SUPPORTED_CHAINS.tempoTestnet.id
-            ? "Tempo bill not found, or Tempo BillSplitter is not configured."
-            : "Bill not found or contract not deployed."
-        );
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [billId, chainId, contractConfigured]);
-
-  const payNormal = async () => {
-    if (!walletClient || !bill || !chainId) return;
-    try {
-      const contractAddr = CONTRACT_ADDRESSES[chainId];
-      if (!contractAddr) return;
-      setPaymentStatus("Preparing normal payment...");
-      const signer = await walletClientToSigner(walletClient);
-      const contract = getContract(signer, chainId);
-
-      await approveUsdc(
-        bill.usdcToken,
-        contractAddr,
-        bill.amountPerParticipant,
-        signer
-      );
-      const tx = await contract.payNormal(billId);
-      setPaymentStatus("Waiting for normal payment confirmation...");
-      await tx.wait();
-      markSplitRequestPaid({
-        chainId,
-        billId,
-        participantAddress: address ?? "",
-        mode: "normal",
-        splitName: bill.name,
-        creatorAddress: bill.creator,
-      });
-      logActivity(
-        "bill_paid_normal",
-        "Bill paid (normal)",
-        `${ethers.formatUnits(bill.amountPerParticipant, 6)} ${tokenSymbol} for ${bill.name}`,
-        { chainId, txHash: tx.hash as string, billId }
-      );
-      showSuccessToast("Payment successful", `Normal ${tokenSymbol} payment confirmed`);
-      router.refresh();
-      setStatuses((prev) =>
-        prev.map((s, i) =>
-          bill.participants[i]?.toLowerCase() === address?.toLowerCase()
-            ? { paid: true, isConfidential: false }
-            : s
-        )
-      );
-      setPaymentStatus(null);
-    } catch (e) {
-      setPaymentStatus(null);
-      throw e;
-    }
-  };
-
-  const payConfidential = async () => {
-    if (!walletClient || !bill || !chainId || !address) return;
-    try {
-      if (!confidentialConfigured) {
-        throw new Error(
-          chainId === SUPPORTED_CHAINS.tempoTestnet.id
-            ? `Tempo confidential ${tokenSymbol} payments need NEXT_PUBLIC_TEMPO_STABLETRUST_ADDRESS before they can be used.`
-            : "Confidential payments are not configured for this chain."
-        );
-      }
-      const signer = await walletClientToSigner(walletClient);
-      const contract = getContract(signer, chainId);
-      setPaymentStatus("Running confidential preflight checks...");
-      await preflightConfidentialPayment(
-        signer,
-        bill.creator,
-        bill.usdcToken,
-        bill.amountPerParticipant,
-        chainId
-      );
-      setPaymentStatus("Preflight complete. Opening wallet...");
-
-      const confidentialTransferHash = await performConfidentialPayment(
-        signer,
-        bill.creator,
-        bill.usdcToken,
-        bill.amountPerParticipant,
-        chainId,
-        (next) => {
-          const labels: Record<string, string> = {
-            awaiting_signature: "Waiting for wallet signature...",
-            creating_account: "Initializing confidential account...",
-            checking_recipient: "Checking recipient confidential account...",
-            depositing: `Depositing to ${confidentialTokenSymbol} balance...`,
-            transferring: "Submitting confidential transfer...",
-            finalizing: "Waiting for finalization...",
-            retrying: "Network is temporarily busy, retrying...",
-          };
-          setPaymentStatus(labels[next] ?? "Processing confidential payment...");
-        }
-      );
-
-      let markedOnChain = false;
-      let markTxHash: string | undefined;
-      const isArcCreatorOnlyPath =
-        chainId === SUPPORTED_CHAINS.arcTestnet.id &&
-        address.toLowerCase() !== bill.creator.toLowerCase();
-      if (isArcCreatorOnlyPath) {
-        setPaymentStatus(
-          "Confidential payment sent. On this Arc contract version, the split creator must confirm it on-chain."
-        );
+        markSplitRequestPaid({
+          chainId,
+          billId,
+          participantAddress: address,
+          mode: "normal",
+          splitName: bill.name,
+          creatorAddress: bill.creator,
+        });
+        showSuccessToast("Payment confirmed", `Paid ${bill.name}`);
+        setStatuses((prev) => {
+          const next = new Map(prev);
+          next.set(address.toLowerCase(), {
+            paid: true,
+            isConfidential: false,
+            paidAt: BigInt(Math.floor(Date.now() / 1000)),
+          });
+          return next;
+        });
       } else {
-        try {
-          const tx = await contract.markPaidConfidential(billId, address);
-          markTxHash = tx.hash as string;
-          setPaymentStatus("Confirming confidential bill status on contract...");
-          await tx.wait();
-          markedOnChain = true;
-        } catch (markError) {
-          const message =
-            markError instanceof Error
-              ? markError.message.toLowerCase()
-              : String(markError).toLowerCase();
-          const creatorOnly = message.includes("only creator can mark confidential pay");
-          if (!creatorOnly) {
-            throw markError;
-          }
-          setPaymentStatus(
-            "Confidential payment sent. On this Arc contract version, the split creator must confirm it on-chain."
-          );
-        }
+        setStage("Running confidential preflight...");
+        await preflightConfidentialPayment(signer, bill.creator, bill.usdcToken, amountRaw, chainId);
+        setStage("Submitting confidential payment...");
+        const txHash = await performConfidentialPayment(
+          signer,
+          bill.creator,
+          bill.usdcToken,
+          amountRaw,
+          chainId,
+          (next) => setStage(next)
+        );
+        logActivity(address, "bill_paid_confidential", `Paid "${bill.name}" (confidential)`, `${ethers.formatUnits(amountRaw, tokenDecimals)} ${tokenSymbol}`, {
+          chainId,
+          txHash,
+          billId,
+        });
+        markSplitRequestPaid({
+          chainId,
+          billId,
+          participantAddress: address,
+          mode: "confidential",
+          splitName: bill.name,
+          creatorAddress: bill.creator,
+        });
+        showSuccessToast("Confidential payment submitted", `Paid ${bill.name}`);
+        setStatuses((prev) => {
+          const next = new Map(prev);
+          next.set(address.toLowerCase(), {
+            paid: true,
+            isConfidential: true,
+            paidAt: BigInt(Math.floor(Date.now() / 1000)),
+          });
+          return next;
+        });
       }
-
-      markSplitRequestPaid({
-        chainId,
-        billId,
-        participantAddress: address,
-        mode: "confidential",
-        splitName: bill.name,
-        creatorAddress: bill.creator,
-      });
-      logActivity(
-        "bill_paid_confidential",
-        "Bill paid (confidential)",
-        `${ethers.formatUnits(bill.amountPerParticipant, 6)} ${tokenSymbol} confidential for ${bill.name}`,
-        { chainId, txHash: markTxHash ?? confidentialTransferHash, billId }
-      );
-      showSuccessToast("Payment successful", "Confidential payment submitted");
-      if (markedOnChain) {
-        router.refresh();
-      }
-      setStatuses((prev) =>
-        prev.map((s, i) =>
-          bill.participants[i]?.toLowerCase() === address.toLowerCase()
-            ? { paid: true, isConfidential: true }
-            : s
-        )
-      );
-      setPaymentStatus(null);
+      setTimeout(() => void fetchBill(), 2000);
     } catch (e) {
-      setPaymentStatus(null);
-      throw e;
+      setError(e instanceof Error ? e.message : "Payment failed.");
+    } finally {
+      setStage(null);
+      setLoading(false);
     }
   };
-
-  const participantsWithStatus =
-    bill?.participants.map((addr, i) => ({
-      address: addr,
-      paid: statuses[i]?.paid ?? false,
-      isConfidential: statuses[i]?.isConfidential ?? false,
-    })) ?? [];
-
-  const isPayer =
-    !!address &&
-    bill?.participants.some(
-      (p) => p.toLowerCase() === address.toLowerCase()
-    );
-  const myIdx: number =
-    address && bill
-      ? bill.participants.findIndex(
-          (p) => p.toLowerCase() === address.toLowerCase()
-        )
-      : -1;
-  const alreadyPaid = myIdx >= 0 && (statuses[myIdx]?.paid ?? false);
-
-  const amountFormatted = bill
-    ? `${ethers.formatUnits(bill.amountPerParticipant, 6)} ${tokenSymbol}`
-    : "";
 
   return (
     <LayoutShell>
-      <Link
-        href="/app"
-        className="mb-5 inline-block rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
-      >
-        ← Back
-      </Link>
+      <TransactionModal open={loading} stage={stage} />
 
-      {loading ? (
-        <p className="text-stone-500">Loading…</p>
-      ) : error || !bill ? (
-        <p className="text-red-600">{error ?? "Bill not found."}</p>
-      ) : (
-        <div className="space-y-6">
-          {chainId === SUPPORTED_CHAINS.tempoTestnet.id && (
-            <div
-              className={`rounded-2xl border px-4 py-3 text-sm ${
-                contractConfigured
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                  : "border-amber-200 bg-amber-50 text-amber-800"
-              }`}
-            >
-              {contractConfigured
-                ? confidentialConfigured
-                  ? "Tempo BillSplitter and confidential routing are configured for this bill."
-                  : "Tempo BillSplitter is configured. Add Tempo StableTrust config to enable confidential bill payments."
-                : "Tempo bill execution is unavailable until NEXT_PUBLIC_TEMPO_BILLSPLITTER_ADDRESS is configured."}
+      <p className="label-text text-brand-red">■ FairSplit / Bill Detail</p>
+      <h1 className="mt-2 font-grotesk text-page-title font-bold uppercase text-brand-black underline decoration-brand-red decoration-4 underline-offset-4">
+        {bill?.name ?? "Loading..."}
+      </h1>
+
+      {fetchError && (
+        <Card className="mt-6 p-6">
+          <p className="font-mono text-sm text-brand-red">{fetchError}</p>
+        </Card>
+      )}
+
+      {bill && (
+        <div className="mt-6 grid gap-6 md:grid-cols-2">
+          <Card className="p-6">
+            <p className="label-text text-brand-muted">// Bill Info</p>
+            <p className="mt-2 text-body text-brand-ink">{bill.description || "No description."}</p>
+            <p className="mt-3 font-mono text-sm text-brand-black">
+              Amount per person:{" "}
+              <span className="font-bold">
+                {ethers.formatUnits(bill.amountPerParticipant, tokenDecimals)} {tokenSymbol}
+              </span>
+            </p>
+            <p className="mt-1 font-mono text-xs text-brand-muted">
+              Creator: {bill.creator.slice(0, 8)}...{bill.creator.slice(-6)}
+            </p>
+          </Card>
+
+          <Card className="p-6">
+            <p className="label-text text-brand-muted">// Participants</p>
+            <div className="mt-3 space-y-2">
+              {bill.participants.map((p) => {
+                const s = statuses.get(p.toLowerCase());
+                const name = resolveDisplayName(address ?? null, p);
+                return (
+                  <div
+                    key={p}
+                    className="flex items-center justify-between border-2 border-brand-black bg-white px-3 py-2"
+                  >
+                    <span className="font-mono text-xs text-brand-black">{name}</span>
+                    <Badge variant={s?.paid ? "green" : "red"}>
+                      {s?.paid ? (s.isConfidential ? "PAID (C)" : "PAID") : "UNPAID"}
+                    </Badge>
+                  </div>
+                );
+              })}
             </div>
-          )}
-          <div className="rounded-3xl border border-white/70 bg-white/85 p-6 backdrop-blur">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-3xl font-semibold tracking-tight text-stone-900">{bill.name}</h2>
-              {chainId && (
-                <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-700">
-                  {getChainLabel(chainId)}
-                </span>
-              )}
-            </div>
-            {bill.description && (
-              <p className="mt-2 text-base text-stone-600">{bill.description}</p>
-            )}
-          </div>
+          </Card>
+        </div>
+      )}
 
-          <div className="rounded-3xl border border-white/70 bg-white/85 p-6 backdrop-blur">
-            <p className="text-sm text-stone-500">Amount per person</p>
-            <p className="text-2xl font-semibold text-stone-900">{amountFormatted}</p>
-          </div>
-
-          <ParticipantList
-            participants={participantsWithStatus}
-            amountFormatted={amountFormatted}
-          />
-
-          {isConnected && (
-            <PaymentForm
-              billId={billId}
-              amountWei={bill.amountPerParticipant}
-              amountFormatted={amountFormatted}
-              tokenSymbol={tokenSymbol}
-              confidentialTokenSymbol={confidentialTokenSymbol}
-              onPayNormal={payNormal}
-              onPayConfidential={payConfidential}
-              isPayer={!!isPayer}
-              alreadyPaid={!!alreadyPaid}
-              paymentStatus={paymentStatus}
+      {bill && !alreadyPaid && isConnected && address?.toLowerCase() !== bill.creator.toLowerCase() && (
+        <Card className="mt-6 max-w-md p-6">
+          <p className="label-text text-brand-green">// Pay Your Share</p>
+          <div className="mt-3">
+            <ModeToggle
+              value={mode}
+              onChange={setMode}
+              disabled={!confidentialConfigured && mode !== "normal"}
             />
+          </div>
+          {error && (
+            <p className="mt-3 border-2 border-brand-red p-2 font-mono text-xs text-brand-red">
+              {error}
+            </p>
           )}
+          <Button
+            variant="red"
+            size="lg"
+            className="mt-4 w-full"
+            onClick={onPay}
+            disabled={loading}
+          >
+            {loading ? "Processing..." : `Pay ${ethers.formatUnits(bill.amountPerParticipant, tokenDecimals)} ${tokenSymbol} →`}
+          </Button>
+        </Card>
+      )}
+
+      {alreadyPaid && (
+        <div className="mt-6 max-w-md border-2 border-brand-black bg-white p-6 shadow-brutal">
+          <p className="label-text text-brand-muted">// PAYMENT STATUS</p>
+          <div className="mt-3 flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center border-2 border-brand-black bg-brand-green font-mono text-lg font-bold text-white">
+              ✓
+            </span>
+            <div>
+              <p className="font-grotesk text-base font-bold uppercase text-brand-black">
+                Paid
+              </p>
+              <p className="mt-0.5 font-mono text-xs text-brand-muted">
+                You have already paid this bill.
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </LayoutShell>

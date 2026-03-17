@@ -52,6 +52,19 @@ export function NotificationBell() {
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (buttonRef.current?.contains(target)) return;
+      const panel = document.querySelector("[data-alerts-panel]");
+      if (panel?.contains(target)) return;
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
   const notifications = useMemo(
     () => (address ? getNotificationsForUser(address) : []),
     [address, tick]
@@ -76,11 +89,12 @@ export function NotificationBell() {
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="nav-pill relative h-9 px-3 text-xs font-semibold md:h-auto md:px-4 md:py-2.5 md:text-sm"
+        className="relative border-2 border-brand-black bg-brand-red px-3 py-2 font-grotesk text-xs font-bold uppercase text-white shadow-brutal transition-all duration-75 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-brutal-lg active:translate-x-0.5 active:translate-y-0.5 active:shadow-none md:px-4 md:py-2.5 md:text-sm"
       >
+        {unread > 0 && <span className="mr-1.5">●</span>}
         Alerts
         {unread > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center border-2 border-brand-black bg-white px-1 font-mono text-[10px] font-bold text-brand-black">
             {unread > 9 ? "9+" : unread}
           </span>
         )}
@@ -91,7 +105,8 @@ export function NotificationBell() {
         panelStyle &&
         createPortal(
           <div
-            className="fixed z-[220] rounded-2xl border border-stone-200 bg-white p-3"
+            data-alerts-panel
+            className="fixed z-[220] border-2 border-brand-black bg-white p-4 shadow-brutal-lg"
             style={{ top: panelStyle.top, left: panelStyle.left, width: panelStyle.width }}
           >
             <div className="mb-2 flex items-center justify-between">

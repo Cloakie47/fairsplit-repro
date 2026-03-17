@@ -55,3 +55,9 @@ export function createOrUpdateProfile(
   setProfile(profile);
   return profile;
 }
+
+export function clearProfile(walletAddress: string): void {
+  const profiles = getProfiles();
+  delete profiles[walletAddress.toLowerCase()];
+  setProfiles(profiles);
+}

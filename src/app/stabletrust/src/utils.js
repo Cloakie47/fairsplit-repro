@@ -2,7 +2,14 @@ import { ethers } from "ethers";
 // Pinata uploads API endpoint
 // Docs: https://docs.pinata.cloud
 const PINATA_UPLOAD_URL = "https://uploads.pinata.cloud/v3/files";
-const PINATA_JWT = process.env.NEXT_PUBLIC_PINATA_JWT || process.env.PINATA_JWT;
+
+function getPinataJwt() {
+  return (
+    process.env.NEXT_PUBLIC_PINATA_JWT ||
+    process.env.PINATA_JWT ||
+    process.env.REACT_APP_PINATA_JWT
+  );
+}
 /**
  * Encodes the ZK-Proof data for a transfer into a format the Solidity contract expects.
  *
@@ -94,8 +101,11 @@ export async function waitForCondition(
  * @returns {Promise<string>} The CID string.
  */
 export async function uploadJsonToIpfs(data) {
-  if (!PINATA_JWT) {
-    throw new Error("REACT_APP_PINATA_JWT is not set");
+  const pinataJwt = getPinataJwt();
+  if (!pinataJwt) {
+    throw new Error(
+      "Pinata JWT is not set. Tempo confidential transfers require `PINATA_JWT` (or `NEXT_PUBLIC_PINATA_JWT`) in your env, then restart the dev server.",
+    );
   }
 
   const json = JSON.stringify(data);
@@ -109,7 +119,7 @@ export async function uploadJsonToIpfs(data) {
   const res = await fetch(PINATA_UPLOAD_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${PINATA_JWT}`,
+      Authorization: `Bearer ${pinataJwt}`,
     },
     body: form,
   });
@@ -131,8 +141,11 @@ export async function uploadJsonToIpfs(data) {
  * @returns {Promise<string>} The CID string.
  */
 export async function uploadBytesToIpfs(bytes, name = "proof.bin") {
-  if (!PINATA_JWT) {
-    throw new Error("REACT_APP_PINATA_JWT is not set");
+  const pinataJwt = getPinataJwt();
+  if (!pinataJwt) {
+    throw new Error(
+      "Pinata JWT is not set. Tempo confidential transfers require `PINATA_JWT` (or `NEXT_PUBLIC_PINATA_JWT`) in your env, then restart the dev server.",
+    );
   }
 
   const uint8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
@@ -147,7 +160,7 @@ export async function uploadBytesToIpfs(bytes, name = "proof.bin") {
   const res = await fetch(PINATA_UPLOAD_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${PINATA_JWT}`,
+      Authorization: `Bearer ${pinataJwt}`,
     },
     body: form,
   });

@@ -1,102 +1,196 @@
-"use client";
-
 import Link from "next/link";
-import Script from "next/script";
-import { createElement } from "react";
+import { NavBar } from "@/components/landing/NavBar";
+import { HeroDemo } from "@/components/landing/HeroDemo";
+import { Ticker } from "@/components/landing/Ticker";
+import { FeatureCards } from "@/components/landing/FeatureCards";
+import { StepCards } from "@/components/landing/StepCards";
 
-export default function LandingHomePage() {
+export default function LandingPage() {
   return (
     <>
-      <Script
-        src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs"
-        type="module"
-        strategy="afterInteractive"
-      />
-      <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_10%_16%,rgba(59,130,246,0.2),transparent_34%),radial-gradient(circle_at_84%_20%,rgba(14,165,233,0.16),transparent_32%),linear-gradient(180deg,#f8fbff_0%,#f4f8ff_100%)] text-[#0f172a]">
-        <div className="pointer-events-none fixed inset-0 -z-10 h-full w-full opacity-[0.78]">
-          {createElement("dotlottie-player", {
-            src: "https://assets-v2.lottiefiles.com/a/926b5f5e-117a-11ee-b83d-df9534a9fcf0/DhEx6yntOU.lottie",
-            background: "transparent",
-            speed: "0.6",
-            loop: true,
-            autoplay: true,
-            style: { width: "100%", height: "100%" },
-          })}
-        </div>
-        <div className="pointer-events-none fixed inset-0 -z-10 bg-[linear-gradient(to_bottom,rgba(248,250,255,0.42),rgba(255,255,255,0.68))]" />
-        <div className="landing-glow pointer-events-none fixed -left-16 top-28 -z-10 h-64 w-64 rounded-full bg-blue-300/30 blur-3xl" />
-        <div className="landing-glow pointer-events-none fixed right-10 top-20 -z-10 h-52 w-52 rounded-full bg-cyan-300/25 blur-3xl" />
-
-        <header className="mx-auto flex w-full max-w-[1200px] items-center justify-between px-6 py-7 md:px-10">
-          <h1 className="text-2xl font-bold tracking-tight text-[#1e293b] md:text-4xl">
-            Fairsplit
-          </h1>
-          <Link
-            href="/app"
-            className="rounded-full border border-[#2563eb] bg-[#3b82f6] px-6 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#2563eb]"
-          >
-            Launch App
-          </Link>
-        </header>
-
-        <main className="mx-auto w-full max-w-[1200px] px-6 pb-28 pt-20 md:px-10 md:pt-32">
-          <section className="landing-fade-up max-w-6xl">
-            <p className="inline-flex rounded-full border border-slate-200 bg-white/95 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.13em] text-[#1e40af]">
-              STABLE TOKEN SPLIT PAYMENTS
-            </p>
-            <h2 className="mt-7 max-w-[1100px] text-5xl font-bold leading-[1.02] tracking-tight text-[#0f172a] md:text-7xl">
-              Say, Hello to Fairsplit
-            </h2>
-            <p className="mt-5 max-w-3xl text-lg font-medium text-[#334155] md:text-[2rem] md:leading-tight">
+      <NavBar />
+      <section className="flex min-h-screen flex-col pt-14">
+        <div className="flex flex-1 flex-col border-b-2 border-brand-black md:flex-row">
+          <div className="flex flex-1 flex-col justify-center border-r-2 border-brand-black bg-brand-bg px-12 py-20 md:px-16 md:py-20">
+            <div className="mb-8 inline-flex w-fit animate-smack-in items-center gap-2 border-2 border-brand-black bg-brand-yellow px-3.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-brand-black shadow-brutal">
+              Stable Token Split Payments
+            </div>
+            <h1 className="mb-6 text-[clamp(44px,5.5vw,72px)] font-bold leading-none tracking-tight text-brand-black uppercase">
+              <span className="inline-block animate-word-in opacity-0 [animation-delay:0.3s] [animation-fill-mode:forwards]">
+                Say,&nbsp;
+              </span>
+              <span className="inline-block animate-word-in opacity-0 [animation-delay:0.42s] [animation-fill-mode:forwards]">
+                Hello&nbsp;
+              </span>
+              <span className="inline-block animate-word-in opacity-0 [animation-delay:0.54s] [animation-fill-mode:forwards]">
+                to&nbsp;
+              </span>
+              <span className="inline-block animate-word-in opacity-0 [animation-delay:0.66s] [animation-fill-mode:forwards]">
+                Fairsplit
+              </span>
+            </h1>
+            <p className="mb-3.5 animate-fade-up text-xl font-semibold tracking-tight text-brand-ink [animation-delay:0.8s] [animation-fill-mode:both]">
               Split stable tokens. Reveal only what&apos;s required.
             </p>
-            <p className="mt-5 max-w-2xl text-base leading-relaxed text-[#64748b] md:text-xl">
+            <p className="mb-10 max-w-[420px] animate-fade-up text-[15px] font-normal leading-relaxed text-brand-muted [animation-delay:0.95s] [animation-fill-mode:both]">
               Create expense splits, track who paid, send reminders, and settle
               on-chain with direct and confidential transfers.
             </p>
-
-            <div className="mt-11">
+            <div className="mb-10 flex animate-fade-up gap-3.5 [animation-delay:1.1s] [animation-fill-mode:both]">
               <Link
-                href="/app"
-                className="rounded-full border border-[#2563eb] bg-[#2563eb] px-8 py-4 text-lg font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#1d4ed8]"
+                href="/create-bill"
+                className="inline-flex items-center gap-2 border-2 border-brand-black bg-brand-red px-7 py-3.5 font-mono text-[13px] font-bold uppercase tracking-wider text-white shadow-brutal-lg transition hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-brutal-xl active:translate-x-1.5 active:translate-y-1.5 active:shadow-none"
               >
                 Launch App
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M3 7h8M8 4l3 3-3 3" />
+                </svg>
+              </Link>
+              <Link
+                href="#how"
+                className="inline-flex items-center gap-2 border-2 border-brand-black bg-white px-6 py-3.5 font-mono text-xs font-bold uppercase tracking-wider text-brand-black shadow-brutal transition hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-brand-cream hover:shadow-brutal-lg active:translate-x-1 active:translate-y-1 active:shadow-none"
+              >
+                How it works
               </Link>
             </div>
-          </section>
-        </main>
-
-        <footer className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white/92 backdrop-blur-md">
-          <div className="mx-auto flex w-full max-w-[1200px] items-center justify-end gap-4 px-6 py-3 text-sm font-medium text-slate-600 md:px-10">
-            <a
-              href="https://www.notion.so/End-User-Guide-How-People-Use-FairSplit-3176ffa741d780ba93c5f4ae6975feac?source=copy_link"
-              target="_blank"
-              rel="noopener"
-              className="transition hover:text-[#0f172a]"
-            >
-              How it works
-            </a>
-            <span className="text-slate-300">|</span>
-            <a
-              href="https://www.notion.so/Fairsplit-Litepaper-3176ffa741d78024badbe45e9c892a14?source=copy_link"
-              target="_blank"
-              rel="noopener"
-              className="transition hover:text-[#0f172a]"
-            >
-              Litepaper
-            </a>
-            <span className="text-slate-300">|</span>
-            <a
-              href="https://github.com/Cloakie47/fairsplit-repro"
-              target="_blank"
-              rel="noopener"
-              className="transition hover:text-[#0f172a]"
-            >
-              GitHub
-            </a>
+            <div className="flex flex-wrap items-center gap-2 animate-fade-up font-mono text-[10px] font-normal uppercase tracking-widest text-brand-muted [animation-delay:1.25s] [animation-fill-mode:both]">
+              <span className="inline-flex items-center gap-1.5 border-[1.5px] border-brand-black bg-brand-black px-2 py-0.5 font-bold text-brand-yellow">
+                Arc Testnet
+              </span>
+              <span className="inline-flex items-center gap-1.5 border-[1.5px] border-brand-black bg-brand-black px-2 py-0.5 font-bold text-brand-yellow">
+                Base Testnet
+              </span>
+              <span className="inline-flex items-center gap-1.5 border-[1.5px] border-brand-black bg-brand-black px-2 py-0.5 font-bold text-brand-yellow">
+                Tempo Testnet
+              </span>
+              <span className="inline-flex items-center gap-1.5 border-[1.5px] border-brand-muted bg-white px-2 py-0.5 font-bold text-brand-muted">
+                USDC Bridging
+              </span>
+            </div>
           </div>
-        </footer>
-      </div>
+          <div className="relative flex flex-1 items-center justify-center overflow-hidden bg-white px-12 py-16 md:px-14 md:py-16">
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                backgroundImage: `linear-gradient(rgba(10,10,10,0.03) 1px, transparent 1px),
+                  linear-gradient(90deg, rgba(10,10,10,0.03) 1px, transparent 1px)`,
+                backgroundSize: "40px 40px",
+              }}
+            />
+            <HeroDemo />
+          </div>
+        </div>
+        <Ticker />
+      </section>
+
+      <FeatureCards />
+
+      <StepCards />
+
+      <section
+        className="grid grid-cols-1 items-center gap-10 border-b-2 border-brand-black bg-brand-black px-12 py-16 md:grid-cols-[1fr_auto] md:px-16"
+        style={{
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 select-none font-mono text-[160px] font-bold leading-none tracking-tight text-brand-yellow/5"
+          style={{ letterSpacing: "-8px" }}
+          aria-hidden
+        >
+          SPLIT
+        </div>
+        <div className="relative">
+          <h2 className="mb-3.5 text-[clamp(28px,3.5vw,46px)] font-bold leading-tight tracking-tight text-white uppercase">
+            Ready to <em className="font-normal not-italic text-brand-yellow">split fairly</em>?
+          </h2>
+          <p className="max-w-[480px] text-[15px] font-normal leading-relaxed text-white/50">
+            Connect your wallet and start splitting on Arc, Base, or Tempo
+            testnets. More networks coming soon.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3 md:flex-shrink-0">
+          <Link
+            href="/create-bill"
+            className="inline-flex items-center gap-2 border-2.5 border-brand-yellow bg-brand-yellow px-9 py-4 font-mono text-[13px] font-bold uppercase tracking-wider text-brand-black shadow-brutal-lg transition hover:-translate-x-0.5 hover:-translate-y-0.5 hover:border-white hover:bg-white hover:shadow-brutal-xl active:translate-x-1.5 active:translate-y-1.5 active:shadow-none"
+          >
+            Launch App
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 7h8M8 4l3 3-3 3" />
+            </svg>
+          </Link>
+          <Link
+            href="https://github.com/Cloakie47/fairsplit-repro"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block border-2 border-white/20 bg-transparent px-7 py-3 text-center font-mono text-[11px] font-bold uppercase tracking-widest text-white/50 transition hover:border-white/50 hover:text-white"
+          >
+            View on GitHub
+          </Link>
+        </div>
+      </section>
+
+      <footer className="flex items-center justify-between border-t-2 border-brand-black bg-brand-black px-10 py-6">
+        <div className="font-mono text-[13px] font-bold uppercase tracking-wider text-brand-yellow">
+          Fairsplit ✦
+        </div>
+        <div className="flex items-center border border-white/15">
+          <Link
+            href="https://www.notion.so/End-User-Guide-How-People-Use-FairSplit-3176ffa741d780ba93c5f4ae6975feac"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="border-r border-white/15 px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-white/40 transition hover:bg-brand-yellow/10 hover:text-brand-yellow"
+          >
+            How it works
+          </Link>
+          <Link
+            href="https://www.notion.so/Fairsplit-Litepaper-3176ffa741d78024badbe45e9c892a14"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="border-r border-white/15 px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-white/40 transition hover:bg-brand-yellow/10 hover:text-brand-yellow"
+          >
+            Litepaper
+          </Link>
+          <Link
+            href="https://github.com/Cloakie47/fairsplit-repro"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="border-r border-white/15 px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-white/40 transition hover:bg-brand-yellow/10 hover:text-brand-yellow"
+          >
+            GitHub
+          </Link>
+          <Link
+            href="https://x.com/0xfairsplit"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-white/40 transition hover:bg-brand-yellow/10 hover:text-brand-yellow"
+          >
+            Twitter
+          </Link>
+        </div>
+        <div className="font-mono text-[10px] uppercase tracking-wider text-white/20">
+          © 2025 Fairsplit
+        </div>
+      </footer>
     </>
   );
 }

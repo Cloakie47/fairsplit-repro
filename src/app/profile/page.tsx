@@ -2,27 +2,29 @@
 
 import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
+
 import { LayoutShell } from "@/components/LayoutShell";
-import { createOrUpdateProfile, getProfile } from "@/lib/profile";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+
+import { getProfile, createOrUpdateProfile, clearProfile } from "@/lib/profile";
 
 export default function ProfilePage() {
   const { address, isConnected } = useAccount();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [emailReminders, setEmailReminders] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    if (!address) {
-      setDisplayName("");
-      setEmail("");
-      setEmailReminders(false);
-      return;
-    }
+    if (!address) return;
     const profile = getProfile(address);
-    setDisplayName(profile?.displayName ?? "");
-    setEmail(profile?.email ?? "");
-    setEmailReminders(profile?.emailRemindersOptIn ?? false);
+    if (profile) {
+      setDisplayName(profile.displayName ?? "");
+      setEmail(profile.email ?? "");
+      setEmailReminders(profile.emailRemindersOptIn ?? false);
+    }
   }, [address]);
 
   const onSave = () => {
@@ -32,97 +34,96 @@ export default function ProfilePage() {
       email: email.trim() || undefined,
       emailRemindersOptIn: emailReminders,
     });
-    setStatus("Profile saved.");
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   };
 
-  const onClearDisplayName = () => {
+  const onClear = () => {
     if (!address) return;
-    createOrUpdateProfile(address, { displayName: undefined });
+    clearProfile(address);
     setDisplayName("");
-    setStatus("Profile name cleared.");
+    setEmail("");
+    setEmailReminders(false);
   };
 
   return (
     <LayoutShell>
-      <section className="mx-auto w-full max-w-xl rounded-2xl border border-stone-200 bg-white/95 p-5 md:p-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Profile</h1>
-        <p className="mt-2 text-sm text-stone-600">
-          Set your nickname and email. Your nickname shows in the wallet badge instead of your
-          wallet address.
-        </p>
+      <p className="label-text text-brand-red">■ FairSplit / Profile</p>
+      <h1 className="mt-2 font-grotesk text-page-title font-bold uppercase text-brand-black underline decoration-brand-red decoration-4 underline-offset-4">
+        Profile
+      </h1>
+      <p className="mt-2 text-body text-brand-ink">
+        Manage your display name, email, and notification preferences.
+      </p>
 
-        {!isConnected ? (
-          <p className="mt-5 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
-            Connect your wallet to edit your profile.
-          </p>
-        ) : (
-          <div className="mt-6 space-y-5">
-            <div>
-              <div className="flex items-center justify-between">
-                <label
-                  htmlFor="profile-display-name"
-                  className="block text-sm font-medium text-stone-700"
-                >
-                  Nickname
-                </label>
-                <button
-                  type="button"
-                  onClick={onClearDisplayName}
-                  className="rounded-full border border-stone-300 px-2 py-0.5 text-[11px] font-semibold text-stone-600 transition hover:bg-stone-100"
-                >
-                  Clear
-                </button>
-              </div>
-              <input
-                id="profile-display-name"
-                name="profile-display-name"
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="e.g. Cloakie"
-                className="mt-2 w-full rounded-2xl border border-stone-200 px-4 py-3 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-pink-200"
-              />
-            </div>
+      {!isConnected && (
+        <Card className="mt-6 p-6">
+          <p className="text-body text-brand-ink">Connect your wallet to edit your profile.</p>
+        </Card>
+      )}
 
-            <div>
-              <label htmlFor="profile-email" className="block text-sm font-medium text-stone-700">
-                Email
-              </label>
-              <input
-                id="profile-email"
-                name="profile-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="mt-2 w-full rounded-2xl border border-stone-200 px-4 py-3 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-pink-200"
-              />
-            </div>
+      {isConnected && address && (
+        <Card className="relative mt-6 p-6">
+          <button
+            type="button"
+            onClick={onClear}
+            className="absolute right-4 top-4 font-mono text-xs font-extrabold uppercase tracking-widest text-brand-muted underline hover:text-brand-red"
+          >
+            clear
+          </button>
+          <p className="label-text text-brand-green">// Your Profile</p>
 
-            <label className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-              <input
-                id="profile-email-reminders"
-                name="profile-email-reminders"
-                type="checkbox"
-                checked={emailReminders}
-                onChange={(e) => setEmailReminders(e.target.checked)}
-                className="h-4 w-4 rounded"
-              />
-              <span className="text-sm text-stone-700">Receive email reminders for unpaid splits</span>
-            </label>
-
-            <button
-              type="button"
-              onClick={onSave}
-              className="inline-flex items-center justify-center rounded-2xl border border-[#d56ac7] bg-[#f7b8ee] px-5 py-2.5 text-sm font-semibold text-stone-900 transition hover:brightness-95"
-            >
-              Save profile
-            </button>
-
-            {status && <p className="text-sm font-medium text-stone-700">{status}</p>}
+          <div className="mt-4 border-2 border-brand-black bg-white p-3">
+            <p className="label-text text-brand-muted">Wallet Address</p>
+            <p className="mt-1 font-mono text-xs font-bold text-brand-black">
+              {address}
+            </p>
           </div>
-        )}
-      </section>
+
+          <div className="mt-5 space-y-4">
+            <Input
+              label="Display Name"
+              id="display-name"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Your Name"
+            />
+
+            <Input
+              label="Email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+            />
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setEmailReminders(!emailReminders)}
+                className="flex h-5 w-5 items-center justify-center border-2 border-brand-black bg-white transition-all duration-75 hover:bg-brand-yellow"
+              >
+                {emailReminders && (
+                  <span className="text-brand-black">✓</span>
+                )}
+              </button>
+              <span className="font-grotesk text-sm text-brand-ink">
+                Opt-in to email reminders for split requests
+              </span>
+            </div>
+
+            {saved && (
+              <div className="border-2 border-brand-green bg-white p-2 font-mono text-xs text-brand-green">
+                Profile saved successfully.
+              </div>
+            )}
+
+            <Button variant="black" size="md" onClick={onSave}>
+              Save Profile →
+            </Button>
+          </div>
+        </Card>
+      )}
     </LayoutShell>
   );
 }

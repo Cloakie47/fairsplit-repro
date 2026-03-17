@@ -1,141 +1,188 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { LayoutShell } from "@/components/LayoutShell";
-import { ActivityType, getActivity } from "@/lib/activity";
-import { getChainLabel, getTxExplorerUrl } from "@/lib/explorer";
+import { useMemo, useState } from "react";
+import { useAccount } from "wagmi";
 
-const FILTERS: { id: "all" | ActivityType; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "bill_created", label: "Split Created" },
-  { id: "bill_paid_normal", label: "Split Paid (Normal)" },
-  { id: "bill_paid_confidential", label: "Split Paid (Confidential)" },
-  { id: "direct_paid_normal", label: "Direct Normal" },
-  { id: "direct_paid_confidential", label: "Direct Confidential" },
-  { id: "confidential_topup_completed", label: "Top-ups" },
-  { id: "confidential_withdraw_completed", label: "Withdraws" },
-  { id: "confidential_claim_completed", label: "Claims" },
+import { LayoutShell } from "@/components/LayoutShell";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+
+import { useTransactionHistory } from "@/lib/queries";
+import { getChainLabel, getTxExplorerUrl } from "@/lib/explorer";
+import type { ActivityType } from "@/lib/activity";
+
+const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
+  bill_created: "Bill Created",
+  bill_paid_normal: "Bill Paid",
+  bill_paid_confidential: "Bill Paid (Confidential)",
+  direct_paid_normal: "Direct Payment",
+  direct_paid_confidential: "Direct Payment (Confidential)",
+  usdc_bridged: "USDC Bridged",
+  confidential_account_initialized: "Account Initialized",
+  confidential_balance_refreshed: "Balance Refreshed",
+  confidential_topup_completed: "Top-Up Complete",
+  confidential_withdraw_completed: "Withdraw Complete",
+  confidential_claim_completed: "Claim Complete",
+};
+
+const FILTER_OPTIONS: { value: string; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "payments", label: "Payments" },
+  { value: "bills", label: "Bills" },
+  { value: "confidential", label: "Confidential" },
+  { value: "bridge", label: "Bridge" },
 ];
 
+const PAGE_SIZE = 10;
+
 export default function ActivityPage() {
-  const [filter, setFilter] = useState<"all" | ActivityType>("all");
-  const [page, setPage] = useState(1);
-  const pageSize = 7;
-  const items = useMemo(
-    () => [...getActivity()].sort((a, b) => b.timestamp - a.timestamp),
-    []
-  );
-  const filteredItems = useMemo(
-    () => (filter === "all" ? items : items.filter((item) => item.type === filter)),
-    [filter, items]
-  );
-  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
-  const pageItems = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredItems.slice(start, start + pageSize);
-  }, [filteredItems, page]);
+  const { isConnected } = useAccount();
+  const { data: items, isLoading } = useTransactionHistory();
+  const [filter, setFilter] = useState("all");
+  const [page, setPage] = useState(0);
 
-  const onPrev = () => setPage((p) => Math.max(1, p - 1));
-  const onNext = () => setPage((p) => Math.min(totalPages, p + 1));
+  const filtered = useMemo(() => {
+    if (!items) return [];
+    switch (filter) {
+      case "payments":
+        return items.filter(
+          (i) =>
+            i.type === "direct_paid_normal" ||
+            i.type === "direct_paid_confidential"
+        );
+      case "bills":
+        return items.filter(
+          (i) =>
+            i.type === "bill_created" ||
+            i.type === "bill_paid_normal" ||
+            i.type === "bill_paid_confidential"
+        );
+      case "confidential":
+        return items.filter(
+          (i) =>
+            i.type.includes("confidential")
+        );
+      case "bridge":
+        return items.filter((i) => i.type === "usdc_bridged");
+      default:
+        return items;
+    }
+  }, [items, filter]);
 
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const pageItems = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
     <LayoutShell>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-semibold tracking-tight text-stone-900">Activity</h1>
-        <Link
-          href="/app"
-          className="rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
-        >
-          Back home
-        </Link>
+      <p className="label-text text-brand-red">■ FairSplit / Activity</p>
+      <h1 className="mt-2 font-grotesk text-page-title font-bold uppercase text-brand-black underline decoration-brand-red decoration-4 underline-offset-4">
+        Activity
+      </h1>
+      <p className="mt-2 text-body text-brand-ink">
+        View your transaction history across all chains.
+      </p>
+
+      <div className="mt-6 flex flex-wrap gap-2">
+        {FILTER_OPTIONS.map((opt) => (
+          <Button
+            key={opt.value}
+            variant={filter === opt.value ? "black" : "white"}
+            size="sm"
+            onClick={() => {
+              setFilter(opt.value);
+              setPage(0);
+            }}
+          >
+            {opt.label}
+          </Button>
+        ))}
       </div>
 
-      <div className="rounded-3xl border border-white/70 bg-white/85 p-6 backdrop-blur">
-        <div className="mb-4 flex flex-wrap gap-2">
-          {FILTERS.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => {
-                setFilter(item.id);
-                setPage(1);
-              }}
-              className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
-                filter === item.id
-                  ? "bg-black text-white"
-                  : "border border-stone-200 bg-white text-stone-700 hover:bg-stone-100"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-
-        {filteredItems.length === 0 ? (
-          <p className="text-stone-600">No activity yet. Your split and payment actions will appear here.</p>
-        ) : (
-          <>
-            <ul className="space-y-4">
-              {pageItems.map((item) => (
-              <li key={item.id} className="rounded-2xl border border-stone-200 bg-white px-4 py-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-medium text-stone-900">{item.title}</p>
-                  {item.chainId && (
-                    <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-700">
-                      {getChainLabel(item.chainId)}
-                    </span>
-                  )}
-                </div>
-                {item.details && <p className="mt-1 text-sm text-stone-600">{item.details}</p>}
-                {(() => {
-                  const explorerUrl = getTxExplorerUrl(item.chainId, item.txHash);
-                  if (!explorerUrl) return null;
-                  return (
-                    <a
-                      href={explorerUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-1 inline-block text-xs font-semibold text-stone-700 hover:text-stone-900"
-                    >
-                      View tx ↗
-                    </a>
-                  );
-                })()}
-                <p className="mt-1 text-xs text-stone-500">
-                  {new Date(item.timestamp).toLocaleString()}
-                </p>
-              </li>
-              ))}
-            </ul>
-            <div className="mt-4 flex items-center justify-between rounded-2xl border border-stone-200 bg-white px-3 py-2">
-              <button
-                type="button"
-                onClick={onPrev}
-                disabled={page <= 1}
-                className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-800 transition hover:bg-stone-100 disabled:opacity-50"
-              >
-                Prev
-              </button>
-              <span className="text-xs font-medium text-stone-600">
-                Page {page} of {totalPages}
-              </span>
-              <button
-                type="button"
-                onClick={onNext}
-                disabled={page >= totalPages}
-                className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-800 transition hover:bg-stone-100 disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          </>
+      <div className="mt-6 space-y-3">
+        {!isConnected && (
+          <Card className="p-6">
+            <p className="text-body text-brand-ink">
+              Connect your wallet to view activity.
+            </p>
+          </Card>
         )}
+
+        {isConnected && isLoading && (
+          <Card className="p-6">
+            <p className="font-mono text-sm text-brand-muted">Loading activity...</p>
+          </Card>
+        )}
+
+        {isConnected && !isLoading && pageItems.length === 0 && (
+          <Card className="p-6">
+            <p className="text-body text-brand-ink">No activity found.</p>
+          </Card>
+        )}
+
+        {pageItems.map((item) => {
+          const explorerUrl = getTxExplorerUrl(item.chainId, item.txHash);
+          return (
+            <Card key={item.id} hoverable={false} className="p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-grotesk text-sm font-bold text-brand-black">
+                      {item.title}
+                    </p>
+                    <Badge variant="mono">
+                      {ACTIVITY_TYPE_LABELS[item.type] ?? item.type}
+                    </Badge>
+                  </div>
+                  {item.details && (
+                    <p className="mt-1 font-mono text-xs text-brand-muted">
+                      {item.details}
+                    </p>
+                  )}
+                  <p className="mt-1 font-mono text-xs text-brand-muted">
+                    {item.chainId ? getChainLabel(item.chainId) : ""} ·{" "}
+                    {new Date(item.timestamp).toLocaleString()}
+                  </p>
+                </div>
+                {explorerUrl && (
+                  <a
+                    href={explorerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="border-2 border-brand-black px-2 py-1 font-mono text-label text-brand-black transition-all duration-75 hover:bg-brand-yellow"
+                  >
+                    View TX →
+                  </a>
+                )}
+              </div>
+            </Card>
+          );
+        })}
       </div>
+
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-center gap-3">
+          <Button
+            variant="white"
+            size="sm"
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0}
+          >
+            ← Prev
+          </Button>
+          <span className="font-mono text-label text-brand-muted">
+            {page + 1} / {totalPages}
+          </span>
+          <Button
+            variant="white"
+            size="sm"
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={page >= totalPages - 1}
+          >
+            Next →
+          </Button>
+        </div>
+      )}
     </LayoutShell>
   );
 }
-

@@ -1,6 +1,6 @@
 "use client";
 
-export type ToastKind = "success";
+export type ToastKind = "success" | "error";
 
 export type ToastPayload = {
   id: string;
@@ -31,6 +31,15 @@ export function showSuccessToast(title: string, description?: string) {
   emitToast({
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     kind: "success",
+    title,
+    description,
+  });
+}
+
+export function showErrorToast(title: string, description?: string) {
+  emitToast({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    kind: "error",
     title,
     description,
   });

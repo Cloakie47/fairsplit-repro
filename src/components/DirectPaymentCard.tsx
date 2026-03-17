@@ -18,11 +18,12 @@ import {
 } from "@/lib/stabletrust";
 import { logActivity } from "@/lib/activity";
 import { walletClientToSigner } from "@/lib/wallet";
-import { showSuccessToast } from "@/lib/toast";
+import { showSuccessToast, showErrorToast } from "@/lib/toast";
+import { getUserFriendlyPaymentError } from "@/lib/errors";
 import { resolveInputToAddress } from "@/lib/nameService";
 
 export function DirectPaymentCard() {
-  const { isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
   const chainId = useChainId();
   const theme = useChainTheme();
@@ -94,7 +95,8 @@ export function DirectPaymentCard() {
       if (mode === "normal") {
         setStage("Sending normal payment...");
         const txHash = await transferUsdc(tokenAddress, resolvedRecipient, amountRaw, signer);
-        logActivity(
+        address && logActivity(
+          address,
           "direct_paid_normal",
           "Direct payment sent",
           `${ethers.formatUnits(amountRaw, tokenDecimals)} ${tokenSymbol} to ${recipientLabel}`,
@@ -131,7 +133,8 @@ export function DirectPaymentCard() {
             setStage(labels[next] ?? "Processing confidential transfer...");
           }
         );
-        logActivity(
+        address && logActivity(
+          address,
           "direct_paid_confidential",
           "Confidential direct payment submitted",
           `${ethers.formatUnits(amountRaw, tokenDecimals)} ${tokenSymbol} (confidential) to ${recipientLabel}`,
@@ -141,7 +144,13 @@ export function DirectPaymentCard() {
         setMessage("Confidential payment submitted.");
       }
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Payment failed.");
+      const friendly = getUserFriendlyPaymentError(e);
+      setMessage(friendly);
+      if (friendly === "Transaction cancelled.") {
+        showErrorToast("Transaction cancelled", "You cancelled the transaction in your wallet.");
+      } else {
+        showErrorToast("Payment failed", friendly);
+      }
     } finally {
       setStage(null);
       setLoading(false);
