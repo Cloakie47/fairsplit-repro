@@ -20,7 +20,6 @@ import {
   CONTRACT_ADDRESSES,
   type SupportedToken,
 } from "@/lib/chains";
-import { approveUsdc } from "@/lib/usdc";
 import { logActivity } from "@/lib/activity";
 import { showSuccessToast } from "@/lib/toast";
 import { createSplitRequests } from "@/lib/requests";
@@ -80,11 +79,7 @@ export default function CreateBillPage() {
       }
 
       const billId = parseBillId(`${name}-${Date.now()}`);
-      const contractAddr = CONTRACT_ADDRESSES[chainId];
       const tokenAddress = selectedToken.address;
-
-      setStage("Approving token spending...");
-      await approveUsdc(tokenAddress, contractAddr, amountRaw, signer);
 
       setStage("Creating bill on-chain...");
       const contract = getContract(signer, chainId);

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { useAccount, useChainId, useWalletClient } from "wagmi";
+import { useAccount, useChainId, useWalletClient, useSwitchChain } from "wagmi";
 import { ethers } from "ethers";
 
 import { LayoutShell } from "@/components/LayoutShell";
@@ -18,7 +18,9 @@ import {
   getDefaultTokenForChain,
   getTokenByAddress,
   CONTRACT_ADDRESSES,
+  SUPPORTED_CHAINS,
 } from "@/lib/chains";
+import { getChainLabel } from "@/lib/explorer";
 import { approveUsdc } from "@/lib/usdc";
 import { logActivity } from "@/lib/activity";
 import { showSuccessToast } from "@/lib/toast";
@@ -51,74 +53,101 @@ export default function BillDetailPage() {
   const { address, isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
   const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
 
   const [bill, setBill] = useState<BillData | null>(null);
+  const [billChainId, setBillChainId] = useState<number | null>(null);
   const [statuses, setStatuses] = useState<Map<string, ParticipantStatus>>(new Map());
   const [mode, setMode] = useState<"normal" | "confidential">("normal");
   const [loading, setLoading] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [fetching, setFetching] = useState(true);
 
   const fetchBill = useCallback(async () => {
-    if (!chainId || !billId) return;
-    try {
-      const rpc = new ethers.JsonRpcProvider(
-        chainId === 84532
-          ? "https://sepolia.base.org"
-          : chainId === 5042002
-            ? "https://rpc.testnet.arc.network"
-            : "https://rpc.moderato.tempo.xyz"
-      );
-      const contract = getContract(rpc, chainId);
-      const data = await contract.getBill(billId);
-      const billData: BillData = {
-        creator: data[0] as string,
-        usdcToken: data[1] as string,
-        name: data[2] as string,
-        description: data[3] as string,
-        amountPerParticipant: data[4] as bigint,
-        participants: data[5] as string[],
-      };
-      setBill(billData);
+    if (!billId) return;
+    setFetching(true);
+    setFetchError(null);
+    setBill(null);
+    setBillChainId(null);
+    const chainIds = Object.keys(CONTRACT_ADDRESSES).map(Number);
+    const rpcByChainId: Record<number, string> = {};
+    for (const c of Object.values(SUPPORTED_CHAINS)) {
+      rpcByChainId[c.id] = c.rpc;
+    }
+    for (const cid of chainIds) {
+      const rpcUrl = rpcByChainId[cid];
+      if (!rpcUrl) continue;
+      try {
+        const rpc = new ethers.JsonRpcProvider(rpcUrl);
+        const contract = getContract(rpc, cid);
+        const data = await contract.getBill(billId);
+        const billData: BillData = {
+          creator: data[0] as string,
+          usdcToken: data[1] as string,
+          name: data[2] as string,
+          description: data[3] as string,
+          amountPerParticipant: data[4] as bigint,
+          participants: data[5] as string[],
+        };
+        setBill(billData);
+        setBillChainId(cid);
 
-      const statusMap = new Map<string, ParticipantStatus>();
-      for (const p of billData.participants) {
-        try {
-          const s = await contract.getParticipantStatus(billId, p);
-          statusMap.set(p.toLowerCase(), {
-            paid: s[0] as boolean,
-            isConfidential: s[1] as boolean,
-            paidAt: s[2] as bigint,
-          });
-        } catch {
-          statusMap.set(p.toLowerCase(), {
-            paid: false,
-            isConfidential: false,
-            paidAt: BigInt(0),
-          });
+        const statusMap = new Map<string, ParticipantStatus>();
+        for (const p of billData.participants) {
+          try {
+            const s = await contract.getParticipantStatus(billId, p);
+            statusMap.set(p.toLowerCase(), {
+              paid: s[0] as boolean,
+              isConfidential: s[1] as boolean,
+              paidAt: s[2] as bigint,
+            });
+          } catch {
+            statusMap.set(p.toLowerCase(), {
+              paid: false,
+              isConfidential: false,
+              paidAt: BigInt(0),
+            });
+          }
+        }
+        setStatuses(statusMap);
+        setFetching(false);
+        return;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (!/Bill does not exist/i.test(msg)) {
+          setFetchError(`Failed to load bill: ${msg}`);
+          setFetching(false);
+          return;
         }
       }
-      setStatuses(statusMap);
-    } catch (e) {
-      setFetchError(e instanceof Error ? e.message : "Failed to load bill.");
     }
-  }, [chainId, billId]);
+    const chainNames = chainIds.map((id) => getChainLabel(id)).filter(Boolean).join(", ");
+    setFetchError(
+      chainNames
+        ? `Bill not found on ${chainNames}. This bill may have been created on a different chain — switch to the correct chain above.`
+        : "Bill not found. No supported chains are configured."
+    );
+    setFetching(false);
+  }, [billId]);
 
   useEffect(() => {
     void fetchBill();
   }, [fetchBill]);
 
-  const token = bill ? getTokenByAddress(chainId, bill.usdcToken) : getDefaultTokenForChain(chainId);
+  const effectiveChainId = billChainId ?? chainId;
+  const token = bill ? getTokenByAddress(effectiveChainId, bill.usdcToken) : getDefaultTokenForChain(effectiveChainId);
   const tokenSymbol = token?.symbol ?? "USDC";
   const tokenDecimals = token?.decimals ?? 6;
-  const confidentialConfigured = isConfidentialTransferConfigured(chainId);
+  const confidentialConfigured = isConfidentialTransferConfigured(effectiveChainId);
+  const onCorrectChain = billChainId != null && chainId === billChainId;
 
   const myStatus = address ? statuses.get(address.toLowerCase()) : undefined;
   const alreadyPaid = myStatus?.paid ?? false;
 
   const onPay = async () => {
-    if (!isConnected || !walletClient || !address || !bill) return;
+    if (!isConnected || !walletClient || !address || !bill || billChainId == null || chainId !== billChainId) return;
     setLoading(true);
     setError(null);
     setStage(null);
@@ -128,19 +157,19 @@ export default function BillDetailPage() {
 
       if (mode === "normal") {
         setStage("Approving token...");
-        await approveUsdc(bill.usdcToken, CONTRACT_ADDRESSES[chainId], amountRaw, signer);
+        await approveUsdc(bill.usdcToken, CONTRACT_ADDRESSES[billChainId], amountRaw, signer);
         setStage("Paying bill...");
-        const contract = getContract(signer, chainId);
+        const contract = getContract(signer, billChainId);
         const tx = await contract.payNormal(billId);
         setStage("Confirming...");
         await tx.wait();
         logActivity(address, "bill_paid_normal", `Paid "${bill.name}"`, `${ethers.formatUnits(amountRaw, tokenDecimals)} ${tokenSymbol}`, {
-          chainId,
+          chainId: billChainId,
           txHash: tx.hash as string,
           billId,
         });
         markSplitRequestPaid({
-          chainId,
+          chainId: billChainId,
           billId,
           participantAddress: address,
           mode: "normal",
@@ -159,23 +188,23 @@ export default function BillDetailPage() {
         });
       } else {
         setStage("Running confidential preflight...");
-        await preflightConfidentialPayment(signer, bill.creator, bill.usdcToken, amountRaw, chainId);
+        await preflightConfidentialPayment(signer, bill.creator, bill.usdcToken, amountRaw, billChainId);
         setStage("Submitting confidential payment...");
         const txHash = await performConfidentialPayment(
           signer,
           bill.creator,
           bill.usdcToken,
           amountRaw,
-          chainId,
+          billChainId,
           (next) => setStage(next)
         );
         logActivity(address, "bill_paid_confidential", `Paid "${bill.name}" (confidential)`, `${ethers.formatUnits(amountRaw, tokenDecimals)} ${tokenSymbol}`, {
-          chainId,
+          chainId: billChainId,
           txHash,
           billId,
         });
         markSplitRequestPaid({
-          chainId,
+          chainId: billChainId,
           billId,
           participantAddress: address,
           mode: "confidential",
@@ -208,7 +237,7 @@ export default function BillDetailPage() {
 
       <p className="label-text text-brand-red">■ FairSplit / Bill Detail</p>
       <h1 className="mt-2 font-grotesk text-page-title font-bold uppercase text-brand-black underline decoration-brand-red decoration-4 underline-offset-4">
-        {bill?.name ?? "Loading..."}
+        {fetching ? "Loading..." : bill?.name ?? "Bill"}
       </h1>
 
       {fetchError && (
@@ -221,6 +250,11 @@ export default function BillDetailPage() {
         <div className="mt-6 grid gap-6 md:grid-cols-2">
           <Card className="p-6">
             <p className="label-text text-brand-muted">// Bill Info</p>
+            {billChainId != null && (
+              <p className="mt-1 font-mono text-xs text-brand-muted">
+                Chain: {getChainLabel(billChainId)}
+              </p>
+            )}
             <p className="mt-2 text-body text-brand-ink">{bill.description || "No description."}</p>
             <p className="mt-3 font-mono text-sm text-brand-black">
               Amount per person:{" "}
@@ -256,7 +290,25 @@ export default function BillDetailPage() {
         </div>
       )}
 
-      {bill && !alreadyPaid && isConnected && address?.toLowerCase() !== bill.creator.toLowerCase() && (
+      {bill && billChainId != null && !onCorrectChain && (
+        <Card className="mt-6 max-w-md border-2 border-brand-yellow bg-brand-yellow/20 p-6">
+          <p className="label-text text-brand-black">// Wrong chain</p>
+          <p className="mt-2 text-body text-brand-ink">
+            This bill was created on <strong>{getChainLabel(billChainId)}</strong>. Switch to {getChainLabel(billChainId)} to view and pay.
+          </p>
+          <Button
+            variant="red"
+            size="lg"
+            className="mt-4 w-full"
+            onClick={() => switchChain?.({ chainId: billChainId })}
+            disabled={!switchChain}
+          >
+            Switch to {getChainLabel(billChainId)} →
+          </Button>
+        </Card>
+      )}
+
+      {bill && !alreadyPaid && isConnected && address?.toLowerCase() !== bill.creator.toLowerCase() && onCorrectChain && (
         <Card className="mt-6 max-w-md p-6">
           <p className="label-text text-brand-green">// Pay Your Share</p>
           <div className="mt-3">
