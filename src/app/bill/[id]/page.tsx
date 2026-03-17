@@ -23,7 +23,7 @@ import {
 import { getChainLabel } from "@/lib/explorer";
 import { approveUsdc } from "@/lib/usdc";
 import { logActivity } from "@/lib/activity";
-import { showSuccessToast } from "@/lib/toast";
+import { showSuccessToast, showErrorToast } from "@/lib/toast";
 import { markSplitRequestPaid } from "@/lib/requests";
 import { resolveDisplayName } from "@/lib/friends";
 import {
@@ -31,6 +31,7 @@ import {
   performConfidentialPayment,
   preflightConfidentialPayment,
 } from "@/lib/stabletrust";
+import { getUserFriendlyPaymentError } from "@/lib/errors";
 
 interface BillData {
   creator: string;
@@ -224,7 +225,13 @@ export default function BillDetailPage() {
       }
       setTimeout(() => void fetchBill(), 2000);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Payment failed.");
+      const friendly = getUserFriendlyPaymentError(e);
+      setError(friendly);
+      if (friendly === "Transaction cancelled.") {
+        showErrorToast("Transaction cancelled", "You cancelled the transaction in your wallet.");
+      } else {
+        showErrorToast("Payment failed", friendly);
+      }
     } finally {
       setStage(null);
       setLoading(false);

@@ -81,6 +81,11 @@ export function getUserFriendlyPaymentError(error: unknown): string {
     return "Transaction failed. Check your balance and try again.";
   }
 
+  // Recipient confidential account not initialized
+  if (/recipient.*confidential|recipient.*no confidential|confidential account/i.test(msg)) {
+    return "Initialize recipient confidential account first.";
+  }
+
   // Network / timeout
   if (/network|timeout|fetch|connection refused/i.test(msg)) {
     return "Network error. Please try again.";
