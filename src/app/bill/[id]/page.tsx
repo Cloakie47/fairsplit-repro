@@ -32,6 +32,7 @@ import {
   preflightConfidentialPayment,
 } from "@/lib/stabletrust";
 import { getUserFriendlyPaymentError } from "@/lib/errors";
+import { isConfidentialPaid, markConfidentialPaid } from "@/lib/confidential-paid";
 
 interface BillData {
   creator: string;
@@ -97,19 +98,29 @@ export default function BillDetailPage() {
 
         const statusMap = new Map<string, ParticipantStatus>();
         for (const p of billData.participants) {
-          try {
-            const s = await contract.getParticipantStatus(billId, p);
-            statusMap.set(p.toLowerCase(), {
-              paid: s[0] as boolean,
-              isConfidential: s[1] as boolean,
-              paidAt: s[2] as bigint,
+          const pLower = p.toLowerCase();
+          const storedPaid = isConfidentialPaid(cid, billId, p);
+          if (storedPaid) {
+            statusMap.set(pLower, {
+              paid: true,
+              isConfidential: true,
+              paidAt: BigInt(Math.floor(Date.now() / 1000)),
             });
-          } catch {
-            statusMap.set(p.toLowerCase(), {
-              paid: false,
-              isConfidential: false,
-              paidAt: BigInt(0),
-            });
+          } else {
+            try {
+              const s = await contract.getParticipantStatus(billId, p);
+              statusMap.set(pLower, {
+                paid: s[0] as boolean,
+                isConfidential: s[1] as boolean,
+                paidAt: s[2] as bigint,
+              });
+            } catch {
+              statusMap.set(pLower, {
+                paid: false,
+                isConfidential: false,
+                paidAt: BigInt(0),
+              });
+            }
           }
         }
         setStatuses(statusMap);
@@ -212,6 +223,7 @@ export default function BillDetailPage() {
           splitName: bill.name,
           creatorAddress: bill.creator,
         });
+        markConfidentialPaid(billChainId, billId, address);
         showSuccessToast("Confidential payment submitted", `Paid ${bill.name}`);
         setStatuses((prev) => {
           const next = new Map(prev);
