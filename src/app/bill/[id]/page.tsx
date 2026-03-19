@@ -198,6 +198,7 @@ export default function BillDetailPage() {
           });
           return next;
         });
+        setTimeout(() => void fetchBill(), 2000);
       } else {
         setStage("Running confidential preflight...");
         await preflightConfidentialPayment(signer, bill.creator, bill.usdcToken, amountRaw, billChainId);
@@ -234,8 +235,8 @@ export default function BillDetailPage() {
           });
           return next;
         });
+        // Don't refetch for confidential — contract never gets updated, refetch would overwrite paid with unpaid
       }
-      setTimeout(() => void fetchBill(), 2000);
     } catch (e) {
       const friendly = getUserFriendlyPaymentError(e);
       setError(friendly);
