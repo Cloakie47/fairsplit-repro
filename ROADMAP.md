@@ -39,11 +39,28 @@ This is the wedge. It brings the first merchants and the first attention.
 - Redemption against the pool with an onchain log
 - Public view of funded, redeemed and remaining
 
-### Phase 3: Bill as a structured object
-- Agent extraction of an itemised bill from any source, including a photo of a printed bill
-- Attestation so a bill object cannot be forged
-- Verification against the posted menu, tax and service charge
-- Opens B2B expense settlement: an employee agent files, a company agent verifies against policy and reimburses in USDC
+## FairEats
+
+FairEats is the first build of Phase 1. One listed business, McFair, simulates a merchant storefront end to end.
+
+- A Businesses page lists merchants. Clicking one opens that merchant's own storefront.
+- Menu items carry a base price, size options and customisations, priced as they are selected.
+- The cart holds quantity and the customisation summary for every line.
+- Tables carry a table code. A customer locks in to an unoccupied table and occupied tables are visibly unavailable to everyone else. The occupant can release their own table, the merchant can release any of theirs, and a stale lock auto-releases on a timeout so a forgotten table does not stay occupied forever.
+- Checkout offers pay alone or add participants. Adding participants settles the order through the existing Fairsplit split logic rather than a second settlement path. Paying alone leaves the same order splittable afterwards.
+- Payment is USDC on Base.
+
+Optional confidential payment uses Fairblock's Stabletrust SDK, and is offered on pay-alone orders only. Creating a split writes the order total onchain in plaintext, so the toggle is disabled once participants are added rather than promising a privacy it cannot deliver.
+
+Confidentiality here encrypts amounts and balances. Sender and recipient addresses stay public. It is not anonymity, and the interface says "hide amount", never "anonymous". Participants in a split always see their own share, because shares are stored offchain.
+
+Every order, table, menu and identity record stays offchain. Only the USDC settlement is onchain, and it carries no personal identifier.
+
+This section targets Base only, built and tested on Base Sepolia. Other chains are out of scope for FairEats and unchanged elsewhere in the app.
+
+## Agentic workflows
+
+Deferred. No agents, no auctions and no automated merchant logic in this version. A public agent skill is worth publishing once real merchants are transacting, not before.
 
 ## Open risks
 
