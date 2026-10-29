@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { FoodImage } from "@/components/faireats/FoodImage";
 import { formatMicro } from "@/lib/faireats/pricing";
@@ -14,9 +13,12 @@ interface MenuCardProps {
 }
 
 /**
- * Compact grid card: fixed-aspect image, name, one-line description, price and
- * an Add button. Deliberately dense — the whole menu should be scannable
- * without scrolling past one item per screen.
+ * A menu card, sized to be read rather than counted.
+ *
+ * Nothing here truncates the name. A card narrow enough to need that is a card
+ * that is too narrow, so the grid guarantees a 300px floor instead. The
+ * description is allowed two lines; beyond that it clamps, which is a
+ * legibility choice rather than a space-saving one.
  */
 export function MenuCard({ item, disabled = false, onAdd }: MenuCardProps) {
   const customisable = item.groups.length > 0;
@@ -26,49 +28,53 @@ export function MenuCard({ item, disabled = false, onAdd }: MenuCardProps) {
     <Card className="flex h-full flex-col p-0">
       <FoodImage src={item.imagePath} alt={item.name} />
 
-      <div className="flex flex-1 flex-col p-3">
-        <div className="flex items-start justify-between gap-2">
-          <p className="truncate font-grotesk text-body font-bold uppercase leading-tight text-brand-black">
-            {item.name}
-          </p>
-          <Badge variant="mono" className="shrink-0">
-            {formatMicro(item.basePriceMicro)}
-          </Badge>
-        </div>
+      <div className="flex flex-1 flex-col p-4">
+        <p className="font-grotesk text-card-title font-bold uppercase leading-tight text-brand-black">
+          {item.name}
+        </p>
 
         {item.description && (
-          <p className="mt-1 truncate font-grotesk text-xs text-brand-muted">
+          <p className="mt-1.5 line-clamp-2 font-grotesk text-body leading-snug text-brand-muted">
             {item.description}
           </p>
         )}
 
-        <div className="mt-3 flex-1" />
+        <div className="mt-4 flex-1" />
 
-        <button
-          type="button"
-          disabled={unavailable}
-          onClick={() => onAdd(item)}
-          className={[
-            "min-h-[40px] w-full border-2 border-brand-black px-3 py-2",
-            "font-grotesk text-xs font-bold uppercase tracking-wide",
-            "shadow-brutal transition-all duration-75",
-            "hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-brutal-lg",
-            "active:translate-x-1 active:translate-y-1 active:shadow-none",
-            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-black",
-            "disabled:pointer-events-none disabled:opacity-50",
-            unavailable
-              ? "bg-white text-brand-black"
-              : "bg-brand-yellow text-brand-black",
-          ].join(" ")}
-        >
-          {unavailable ? "Unavailable" : "Add"}
-        </button>
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="label-text text-brand-muted">Price</p>
+            <p className="font-grotesk text-card-title font-bold leading-none text-brand-black">
+              {formatMicro(item.basePriceMicro)}{" "}
+              <span className="font-mono text-xs">USDC</span>
+            </p>
+          </div>
 
-        {customisable && !unavailable && (
-          <p className="label-text mt-1.5 text-center text-brand-muted">
-            Customisable
-          </p>
-        )}
+          <div className="flex flex-col items-end gap-1">
+            <button
+              type="button"
+              disabled={unavailable}
+              onClick={() => onAdd(item)}
+              className={[
+                "min-h-[44px] border-2 border-brand-black px-6 py-2",
+                "font-grotesk text-sm font-bold uppercase tracking-wide",
+                "shadow-brutal transition-all duration-75",
+                "hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-brutal-lg",
+                "active:translate-x-1 active:translate-y-1 active:shadow-none",
+                "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-black",
+                "disabled:pointer-events-none disabled:opacity-50",
+                unavailable
+                  ? "bg-white text-brand-black"
+                  : "bg-brand-yellow text-brand-black",
+              ].join(" ")}
+            >
+              {unavailable ? "Unavailable" : "Add"}
+            </button>
+            {customisable && !unavailable && (
+              <p className="label-text text-brand-muted">Customisable</p>
+            )}
+          </div>
+        </div>
       </div>
     </Card>
   );

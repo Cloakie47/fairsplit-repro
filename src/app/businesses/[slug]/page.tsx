@@ -27,6 +27,35 @@ import type { CartLine, MenuItem } from "@/lib/faireats/types";
 
 const CATEGORY_ORDER = ["main", "side", "drink"];
 
+/**
+ * Below this many items the menu renders as ONE grid with no per-category
+ * section headers. A header above a single card is noise, and three
+ * one-item sections stacked vertically wastes the whole page. The rail still
+ * works: it scroll-spies against the first item of each category instead of
+ * against section elements.
+ */
+const SINGLE_GRID_MAX_ITEMS = 8;
+
+/**
+ * Cards are never allowed below 300px. Column count therefore falls out of
+ * the available width and the number of items rather than being pinned to a
+ * breakpoint, so a three-item menu shows three real cards instead of three
+ * slivers. min(100%, 300px) keeps it from overflowing a narrow phone.
+ */
+const GRID_COLUMNS = "repeat(auto-fit, minmax(min(100%, 300px), 1fr))";
+
+/**
+ * Caps how wide cards grow when there are only a handful of them.
+ *
+ * The max track has to be 1fr, not a fixed 360px: `auto-fit` derives the
+ * number of repetitions from the track's *max* when that max is a definite
+ * length, so minmax(300px, 360px) packed by 360 and produced two columns in
+ * 1016px of space instead of three. Using 1fr makes it pack by the 300px
+ * floor, and this max-width stops three items spreading to 500px each on a
+ * wide screen.
+ */
+const GRID_MAX_WIDTH = 1140;
+
 const CATEGORY_LABELS: Record<string, string> = {
   main: "Mains",
   side: "Sides",
@@ -90,6 +119,22 @@ export default function StorefrontPage() {
       items: menu.filter((item) => item.category === category),
     }));
   }, [storefront]);
+
+  const flatItems = useMemo(
+    () => grouped.flatMap(({ items }) => items),
+    [grouped],
+  );
+
+  const singleGrid = flatItems.length <= SINGLE_GRID_MAX_ITEMS;
+
+  /** First item of each category, so the rail can spy without section headers. */
+  const anchorIds = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const { category, items } of grouped) {
+      if (items[0]) map[items[0].id] = category;
+    }
+    return map;
+  }, [grouped]);
 
   // Scroll-spy for the category rail. rootMargin biases the trigger towards
   // the upper third so a section counts as active once its heading is near the
@@ -177,11 +222,14 @@ export default function StorefrontPage() {
           </div>
         )}
         <div className="mt-4 h-36 animate-pulse border-2 border-brand-black bg-brand-cream shadow-brutal sm:h-44" />
-        <div className="mt-6 grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-          {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+        <div
+          className="mt-6 grid gap-4"
+          style={{ gridTemplateColumns: GRID_COLUMNS, maxWidth: GRID_MAX_WIDTH }}
+        >
+          {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="h-56 animate-pulse border-2 border-brand-black bg-brand-cream shadow-brutal"
+              className="h-80 animate-pulse border-2 border-brand-black bg-brand-cream shadow-brutal"
             />
           ))}
         </div>
@@ -207,7 +255,10 @@ export default function StorefrontPage() {
         <FoodImage
           src={merchant.coverPath}
           alt=""
-          aspect="aspect-[16/5]"
+          aspect="aspect-[16/7]"
+          // McFair's cover is portrait (736x1102); a centred crop of it is
+          // mostly background wall, so bias downward onto the subject.
+          objectPosition="center 62%"
           className="border-b-0"
         />
       </div>
@@ -246,13 +297,49 @@ export default function StorefrontPage() {
       />
 
       <div className="mt-6 flex gap-5">
-        {/* Category rail — sticky, scroll-spied. Desktop only. */}
-        <aside className="hidden w-[148px] shrink-0 lg:block">
-          <div className="sticky top-6 border-2 border-brand-black bg-white shadow-brutal">
-            <p className="label-text border-b-2 border-brand-black bg-brand-cream px-3 py-2 text-brand-muted">
-              Menu
-            </p>
-            <nav className="flex flex-col p-2">
+        {/* Category rail — left and sticky for a large menu. A small menu
+            renders it horizontally above the grid instead (see below): at
+            laptop widths the 148px rail is the difference between three cards
+            per row and two, and a vertical list of one-item categories earns
+            none of that space. */}
+        {!singleGrid && (
+          <aside className="hidden w-[148px] shrink-0 lg:block">
+            <div className="sticky top-6 border-2 border-brand-black bg-white shadow-brutal">
+              <p className="label-text border-b-2 border-brand-black bg-brand-cream px-3 py-2 text-brand-muted">
+                Menu
+              </p>
+              <nav className="flex flex-col p-2">
+                {grouped.map(({ category, items }) => {
+                  const isActive = activeCategory === category;
+                  return (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => jumpTo(category)}
+                      className={cn(
+                        "mb-1 flex items-center justify-between gap-2 border-2 px-2.5 py-2 text-left",
+                        "font-grotesk text-xs font-bold uppercase transition-all duration-75",
+                        isActive
+                          ? "border-brand-black bg-brand-black text-brand-yellow"
+                          : "border-transparent text-brand-ink hover:border-brand-black hover:bg-brand-yellow",
+                      )}
+                    >
+                      <span>{categoryLabel(category)}</span>
+                      <span className="font-mono text-[10px] opacity-70">
+                        {items.length}
+                      </span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+          </aside>
+        )}
+
+        {/* Menu grid */}
+        <div className="min-w-0 flex-1">
+          {singleGrid && grouped.length > 1 && (
+            <nav className="mb-4 flex flex-wrap gap-2">
               {grouped.map(({ category, items }) => {
                 const isActive = activeCategory === category;
                 return (
@@ -261,14 +348,14 @@ export default function StorefrontPage() {
                     type="button"
                     onClick={() => jumpTo(category)}
                     className={cn(
-                      "mb-1 flex items-center justify-between gap-2 border-2 px-2.5 py-2 text-left",
+                      "flex items-center gap-2 border-2 border-brand-black px-3 py-1.5",
                       "font-grotesk text-xs font-bold uppercase transition-all duration-75",
                       isActive
-                        ? "border-brand-black bg-brand-black text-brand-yellow"
-                        : "border-transparent text-brand-ink hover:border-brand-black hover:bg-brand-yellow",
+                        ? "bg-brand-black text-brand-yellow shadow-brutal"
+                        : "bg-white text-brand-ink hover:bg-brand-yellow",
                     )}
                   >
-                    <span className="truncate">{categoryLabel(category)}</span>
+                    <span>{categoryLabel(category)}</span>
                     <span className="font-mono text-[10px] opacity-70">
                       {items.length}
                     </span>
@@ -276,46 +363,79 @@ export default function StorefrontPage() {
                 );
               })}
             </nav>
-          </div>
-        </aside>
-
-        {/* Menu grid */}
-        <div className="min-w-0 flex-1">
-          {grouped.map(({ category, items }) => (
-            <section
-              key={category}
-              data-category={category}
-              ref={(el) => {
-                sectionRefs.current[category] = el;
+          )}
+          {singleGrid ? (
+            <div
+              data-menu-grid
+              className="grid gap-4"
+              style={{
+                gridTemplateColumns: GRID_COLUMNS,
+                maxWidth: GRID_MAX_WIDTH,
               }}
-              className="mb-8 scroll-mt-24"
             >
-              <p className="label-text mb-3 text-brand-black">
-                {categoryLabel(category)}
-              </p>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                {items.map((item) => (
+              {flatItems.map((item) => (
+                <div
+                  key={item.id}
+                  ref={(el) => {
+                    if (anchorIds[item.id]) {
+                      sectionRefs.current[anchorIds[item.id]] = el;
+                    }
+                  }}
+                  data-category={anchorIds[item.id] ?? undefined}
+                  className="scroll-mt-24"
+                >
                   <MenuCard
-                    key={item.id}
                     item={item}
                     disabled={!merchant.isOpen}
                     onAdd={onAdd}
                   />
-                ))}
-              </div>
-            </section>
-          ))}
+                </div>
+              ))}
+            </div>
+          ) : (
+            grouped.map(({ category, items }) => (
+              <section
+                key={category}
+                data-category={category}
+                ref={(el) => {
+                  sectionRefs.current[category] = el;
+                }}
+                className="mb-8 scroll-mt-24"
+              >
+                <p className="label-text mb-3 text-brand-black">
+                  {categoryLabel(category)}
+                </p>
+                <div
+                  data-menu-grid
+                  className="grid gap-4"
+                  style={{
+                    gridTemplateColumns: GRID_COLUMNS,
+                    maxWidth: GRID_MAX_WIDTH,
+                  }}
+                >
+                  {items.map((item) => (
+                    <MenuCard
+                      key={item.id}
+                      item={item}
+                      disabled={!merchant.isOpen}
+                      onAdd={onAdd}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))
+          )}
         </div>
 
         {/* Docked cart — desktop only; mobile uses the slide-over. */}
-        <aside className="hidden w-[300px] shrink-0 xl:block">
+        <aside className="hidden w-[300px] shrink-0 2xl:block">
           <CartDock merchantSlug={slug} />
         </aside>
       </div>
 
       {/* Mobile cart bar. Sits above the mobile bottom nav. */}
       {count > 0 && (
-        <div className="fixed bottom-16 left-0 right-0 z-40 px-4 xl:hidden">
+        <div className="fixed bottom-16 left-0 right-0 z-40 px-4 2xl:hidden">
           <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 border-2 border-brand-black bg-brand-black px-4 py-3 shadow-brutal-lg">
             <div>
               <p className="label-text text-brand-yellow">
@@ -338,9 +458,9 @@ export default function StorefrontPage() {
           item={configuring}
           onClose={() => setConfiguring(null)}
           onAdded={() => {
-            // Desktop has the cart docked and always visible; only the mobile
-            // slide-over needs opening.
-            if (window.innerWidth < 1280) setCartOpen(true);
+            // The dock is only present at 2xl; narrower viewports use the
+            // slide-over, so it needs opening there.
+            if (window.innerWidth < 1536) setCartOpen(true);
           }}
         />
       )}
