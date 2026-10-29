@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" width="240" height="180" role="img" aria-label="Cola">
+  <rect width="240" height="180" fill="#FFFDE8"/>
+  <rect x="2" y="2" width="236" height="176" fill="none" stroke="#0A0A0A" stroke-width="4"/>
+  <!-- straw -->
+  <path d="M138 22 l16 0 -22 44 -16 0 Z" fill="#D4F5A2" stroke="#0A0A0A" stroke-width="4"/>
+  <!-- lid -->
+  <rect x="74" y="56" width="92" height="16" fill="#D4F5A2" stroke="#0A0A0A" stroke-width="4"/>
+  <!-- cup -->
+  <path d="M80 72 l80 0 -12 84 -56 0 Z" fill="#E8000D" stroke="#0A0A0A" stroke-width="4"/>
+  <!-- band -->
+  <path d="M86 108 l68 0 -2 16 -64 0 Z" fill="#FFFFF8" stroke="#0A0A0A" stroke-width="4"/>
+</svg>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" width="240" height="180" role="img" aria-label="Fries">
+  <rect width="240" height="180" fill="#FFFDE8"/>
+  <rect x="2" y="2" width="236" height="176" fill="none" stroke="#0A0A0A" stroke-width="4"/>
+  <!-- fries sticking out -->
+  <g fill="#D4F5A2" stroke="#0A0A0A" stroke-width="4">
+    <rect x="86" y="36" width="18" height="60"/>
+    <rect x="110" y="24" width="18" height="72"/>
+    <rect x="134" y="40" width="18" height="56"/>
+    <rect x="62" y="52" width="18" height="44"/>
+    <rect x="158" y="56" width="18" height="40"/>
+  </g>
+  <!-- carton -->
+  <path d="M56 94 l128 0 -14 60 -100 0 Z" fill="#E8000D" stroke="#0A0A0A" stroke-width="4"/>
+  <rect x="70" y="112" width="100" height="14" fill="#FFFFF8" stroke="#0A0A0A" stroke-width="4"/>
+</svg>

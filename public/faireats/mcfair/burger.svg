@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" width="240" height="180" role="img" aria-label="Burger">
+  <rect width="240" height="180" fill="#FFFDE8"/>
+  <rect x="2" y="2" width="236" height="176" fill="none" stroke="#0A0A0A" stroke-width="4"/>
+  <!-- top bun -->
+  <path d="M48 76 C48 40 192 40 192 76 Z" fill="#D4F5A2" stroke="#0A0A0A" stroke-width="4"/>
+  <rect x="104" y="52" width="10" height="4" fill="#0A0A0A"/>
+  <rect x="130" y="58" width="10" height="4" fill="#0A0A0A"/>
+  <rect x="82" y="62" width="10" height="4" fill="#0A0A0A"/>
+  <!-- lettuce -->
+  <path d="M44 82 l16 -8 16 8 16 -8 16 8 16 -8 16 8 16 -8 16 8 12 -6 0 10 -156 0 Z" fill="#FFFFF8" stroke="#0A0A0A" stroke-width="4"/>
+  <!-- patty -->
+  <rect x="46" y="96" width="148" height="22" fill="#6A6A68" stroke="#0A0A0A" stroke-width="4"/>
+  <!-- cheese -->
+  <path d="M46 94 l148 0 -14 14 -120 0 Z" fill="#E8000D" stroke="#0A0A0A" stroke-width="4"/>
+  <!-- bottom bun -->
+  <rect x="48" y="120" width="144" height="24" fill="#D4F5A2" stroke="#0A0A0A" stroke-width="4"/>
+</svg>

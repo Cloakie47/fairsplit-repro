@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 300" width="960" height="300" role="img" aria-label="McFair storefront">
+  <rect width="960" height="300" fill="#FFFDE8"/>
+  <!-- dot grid, matching the app background -->
+  <defs>
+    <pattern id="mcfair-dots" width="22" height="22" patternUnits="userSpaceOnUse">
+      <circle cx="1.5" cy="1.5" r="1.5" fill="#0A0A0A" opacity="0.08"/>
+    </pattern>
+  </defs>
+  <rect width="960" height="300" fill="url(#mcfair-dots)"/>
+  <!-- awning -->
+  <g stroke="#0A0A0A" stroke-width="6">
+    <rect x="0" y="0" width="960" height="54" fill="#E8000D"/>
+    <path d="M0 54 l80 0 0 34 Z" fill="#FFFFF8"/>
+    <path d="M160 54 l80 0 0 34 Z" fill="#FFFFF8"/>
+    <path d="M320 54 l80 0 0 34 Z" fill="#FFFFF8"/>
+    <path d="M480 54 l80 0 0 34 Z" fill="#FFFFF8"/>
+    <path d="M640 54 l80 0 0 34 Z" fill="#FFFFF8"/>
+    <path d="M800 54 l80 0 0 34 Z" fill="#FFFFF8"/>
+  </g>
+  <!-- counter -->
+  <rect x="0" y="236" width="960" height="64" fill="#D4F5A2" stroke="#0A0A0A" stroke-width="6"/>
+  <text x="48" y="168" font-family="'Space Grotesk',system-ui,sans-serif" font-size="62" font-weight="700" fill="#0A0A0A">McFAIR</text>
+  <text x="48" y="206" font-family="'Space Mono',ui-monospace,monospace" font-size="18" font-weight="700" fill="#6A6A68" letter-spacing="2">PAY IN USDC &#183; NO TERMINAL &#183; NO CARD</text>
+</svg>

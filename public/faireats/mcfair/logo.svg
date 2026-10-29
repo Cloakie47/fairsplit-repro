@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="McFair">
+  <rect width="120" height="120" fill="#D4F5A2"/>
+  <rect x="3" y="3" width="114" height="114" fill="none" stroke="#0A0A0A" stroke-width="6"/>
+  <rect x="96" y="3" width="21" height="21" fill="#E8000D" stroke="#0A0A0A" stroke-width="6"/>
+  <text x="60" y="62" text-anchor="middle" font-family="'Space Grotesk',system-ui,sans-serif" font-size="34" font-weight="700" fill="#0A0A0A">Mc</text>
+  <text x="60" y="94" text-anchor="middle" font-family="'Space Grotesk',system-ui,sans-serif" font-size="30" font-weight="700" fill="#0A0A0A">FAIR</text>
+</svg>
