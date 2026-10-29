@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useConfig,
   useConnect,
   useAccount,
   useDisconnect,
@@ -10,6 +11,8 @@ import { CHAIN_ACCENT, ChainTheme } from "@/lib/theme";
 import { SUPPORTED_CHAINS } from "@/lib/chains";
 import { getProfile } from "@/lib/profile";
 import { resolveAddressToPreferredName } from "@/lib/nameService";
+import { subscribeCloudSynced } from "@/lib/cloud-sync";
+import { pullCloudDataAfterConnect } from "@/lib/connect-and-pull";
 import { useCallback, useEffect, useState } from "react";
 
 type Accent = (typeof CHAIN_ACCENT)[ChainTheme];
@@ -19,8 +22,9 @@ type WalletConnectProps = {
 };
 
 export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectProps) {
+  const config = useConfig();
   const { address, isConnected, chainId } = useAccount();
-  const { connect, connectors, isPending } = useConnect();
+  const { connectAsync, connectors, isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -78,11 +82,13 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
     window.addEventListener("fairysplit-profile-updated", listener);
     window.addEventListener("storage", listener);
     window.addEventListener("fairysplit-resolved-name-updated", listener);
+    const unsubCloud = subscribeCloudSynced(listener);
     return () => {
       cancelled = true;
       window.removeEventListener("fairysplit-profile-updated", listener);
       window.removeEventListener("storage", listener);
       window.removeEventListener("fairysplit-resolved-name-updated", listener);
+      unsubCloud();
     };
   }, [refreshDisplayName]);
 
@@ -103,6 +109,16 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
     connectors.find((c) => c.id === "metaMask") ??
     connectors.find((c) => c.type === "injected") ??
     connectors[0];
+
+  const onConnectWallet = async () => {
+    if (!preferredConnector) return;
+    try {
+      await connectAsync({ connector: preferredConnector });
+      await pullCloudDataAfterConnect(config);
+    } catch {
+      /* user rejected connect or sign */
+    }
+  };
 
   const nameText = displayName ?? (address ? truncate(address) : "");
   const refreshNameButton = (
@@ -207,7 +223,7 @@ export function WalletConnect({ accent = CHAIN_ACCENT.neutral }: WalletConnectPr
   return (
     <button
       type="button"
-      onClick={() => connect({ connector: preferredConnector })}
+      onClick={() => void onConnectWallet()}
       disabled={isPending}
       className="nav-pill h-10 px-5 text-sm font-bold disabled:opacity-60 md:px-8 md:py-3.5 md:text-base"
     >

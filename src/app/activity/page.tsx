@@ -83,20 +83,23 @@ export default function ActivityPage() {
         View your transaction history across all chains.
       </p>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        {FILTER_OPTIONS.map((opt) => (
-          <Button
-            key={opt.value}
-            variant={filter === opt.value ? "black" : "white"}
-            size="sm"
-            onClick={() => {
-              setFilter(opt.value);
-              setPage(0);
-            }}
-          >
-            {opt.label}
-          </Button>
-        ))}
+      <div className="mt-6 overflow-x-auto pb-1">
+        <div className="flex min-w-max gap-2">
+          {FILTER_OPTIONS.map((opt) => (
+            <Button
+              key={opt.value}
+              className="shrink-0"
+              variant={filter === opt.value ? "black" : "white"}
+              size="sm"
+              onClick={() => {
+                setFilter(opt.value);
+                setPage(0);
+              }}
+            >
+              {opt.label}
+            </Button>
+          ))}
+        </div>
       </div>
 
       <div className="mt-6 space-y-3">
@@ -124,7 +127,7 @@ export default function ActivityPage() {
           const explorerUrl = getTxExplorerUrl(item.chainId, item.txHash);
           return (
             <Card key={item.id} hoverable={false} className="p-4">
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="font-grotesk text-sm font-bold text-brand-black">
@@ -149,7 +152,7 @@ export default function ActivityPage() {
                     href={explorerUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="border-2 border-brand-black px-2 py-1 font-mono text-label text-brand-black transition-all duration-75 hover:bg-brand-yellow"
+                    className="ml-auto border-2 border-brand-black px-2 py-1 font-mono text-label text-brand-black transition-all duration-75 hover:bg-brand-yellow"
                   >
                     View TX →
                   </a>

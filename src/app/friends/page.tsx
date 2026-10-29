@@ -2,13 +2,25 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAccount } from "wagmi";
+import Link from "next/link";
 
 import { LayoutShell } from "@/components/LayoutShell";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 
-import { getFriends, upsertFriend, removeFriend, type Friend } from "@/lib/friends";
+import {
+  getFriends,
+  removeFriend,
+  type Friend,
+  upsertFriend,
+} from "@/lib/friends";
+
+function shortAddress(address: string): string {
+  if (!address) return "";
+  if (address.length <= 12) return address;
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
 
 export default function FriendsPage() {
   const { address, isConnected } = useAccount();
@@ -17,17 +29,28 @@ export default function FriendsPage() {
   const [newNickname, setNewNickname] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
     if (!address) return;
-    setFriends(getFriends(address));
+    setLoading(true);
+    try {
+      const rows = getFriends(address);
+      setFriends(rows ?? []);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load friends.");
+      setFriends([]);
+    } finally {
+      setLoading(false);
+    }
   }, [address]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
-  const onAdd = () => {
+  const onAdd = async () => {
     if (!address) return;
     setError(null);
     if (!newAddress.trim()) {
@@ -38,17 +61,25 @@ export default function FriendsPage() {
       setError("Nickname is required.");
       return;
     }
-    upsertFriend(address, newAddress.trim(), newNickname.trim(), newEmail.trim() || undefined);
-    setNewAddress("");
-    setNewNickname("");
-    setNewEmail("");
-    refresh();
+    try {
+      upsertFriend(address, newAddress.trim(), newNickname.trim(), newEmail.trim() || undefined);
+      setNewAddress("");
+      setNewNickname("");
+      setNewEmail("");
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save friend.");
+    }
   };
 
-  const onRemove = (friendAddress: string) => {
+  const onRemove = async (friendAddress: string) => {
     if (!address) return;
-    removeFriend(address, friendAddress);
-    refresh();
+    try {
+      removeFriend(address, friendAddress);
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to delete friend.");
+    }
   };
 
   return (
@@ -96,23 +127,34 @@ export default function FriendsPage() {
               {error && (
                 <p className="font-mono text-xs text-brand-red">{error}</p>
               )}
-              <Button variant="black" size="md" onClick={onAdd}>
+              <Button className="w-full" variant="black" size="md" onClick={() => void onAdd()}>
                 Add Friend →
               </Button>
             </div>
           </Card>
 
           <div className="mt-6 space-y-3">
-            {friends.length === 0 && (
+            {loading && (
               <Card className="p-4" hoverable={false}>
-                <p className="text-body text-brand-muted">No friends added yet.</p>
+                <p className="text-body text-brand-muted">Loading friends...</p>
               </Card>
             )}
-            {friends.map((f) => (
-              <Card key={f.friendAddress} hoverable={false} className="flex items-center justify-between p-4">
+            {!loading && friends.length === 0 && (
+              <Card className="p-4" hoverable={false}>
+                <p className="text-body text-brand-muted">
+                  No friends added yet. Add a friend to get started.
+                </p>
+              </Card>
+            )}
+            {!loading && friends.map((f) => (
+              <Card
+                key={f.friendAddress}
+                hoverable={false}
+                className="flex flex-col items-start justify-between gap-3 p-4 md:flex-row md:items-center"
+              >
                 <div>
                   <p className="font-grotesk text-sm font-bold text-brand-black">
-                    {f.nickname}
+                    {f.nickname?.trim() || shortAddress(f.friendAddress)}
                   </p>
                   <p className="font-mono text-xs text-brand-muted">
                     {f.friendAddress}
@@ -122,14 +164,27 @@ export default function FriendsPage() {
                       {f.friendEmail}
                     </p>
                   )}
+                  {f.createdAt && (
+                    <p className="font-mono text-xs text-brand-muted">
+                      Added {new Date(f.createdAt).toLocaleDateString()}
+                    </p>
+                  )}
                 </div>
-                <Button
-                  variant="red"
-                  size="sm"
-                  onClick={() => onRemove(f.friendAddress)}
-                >
-                  Remove
-                </Button>
+                <div className="flex w-full flex-col items-stretch gap-2 md:w-auto md:flex-row md:items-center">
+                  <Link className="w-full md:w-auto" href={`/pay?recipient=${encodeURIComponent(f.friendAddress)}`}>
+                    <Button className="w-full md:w-auto" variant="white" size="sm">
+                      Quick Pay
+                    </Button>
+                  </Link>
+                  <Button
+                    className="w-full md:w-auto"
+                    variant="red"
+                    size="sm"
+                    onClick={() => void onRemove(f.friendAddress)}
+                  >
+                    Remove
+                  </Button>
+                </div>
               </Card>
             ))}
           </div>

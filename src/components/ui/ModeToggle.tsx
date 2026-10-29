@@ -12,13 +12,13 @@ interface ModeToggleProps {
 
 export function ModeToggle({ value, onChange, disabled }: ModeToggleProps) {
   return (
-    <div className="flex border-2 border-brand-black">
+    <div className="flex w-full border-2 border-brand-black">
       <button
         type="button"
         disabled={disabled}
         onClick={() => onChange("normal")}
         className={cn(
-          "flex-1 px-4 py-2 font-mono text-label font-bold uppercase transition-all duration-75",
+          "flex-1 px-4 py-2 font-mono text-label font-bold uppercase transition-all duration-75 min-h-[44px]",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-black",
           value === "normal"
             ? "bg-brand-black text-brand-yellow"
@@ -34,7 +34,7 @@ export function ModeToggle({ value, onChange, disabled }: ModeToggleProps) {
         disabled={disabled}
         onClick={() => onChange("confidential")}
         className={cn(
-          "flex-1 border-l-2 border-brand-black px-4 py-2 font-mono text-label font-bold uppercase transition-all duration-75",
+          "flex-1 border-l-2 border-brand-black px-4 py-2 font-mono text-label font-bold uppercase transition-all duration-75 min-h-[44px]",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-black",
           value === "confidential"
             ? "bg-brand-black text-brand-yellow"

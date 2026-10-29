@@ -34,7 +34,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled}
         className={cn(
-          "relative border-2 border-brand-black font-grotesk uppercase tracking-wide",
+          "relative min-h-[44px] border-2 border-brand-black font-grotesk uppercase tracking-wide md:min-h-0",
           "shadow-brutal transition-all duration-75",
           "hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-brutal-lg",
           "active:translate-x-1 active:translate-y-1 active:shadow-none",

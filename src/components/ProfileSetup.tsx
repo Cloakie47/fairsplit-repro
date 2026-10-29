@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
+import {
+  isCloudSyncConfigured,
+  pushProfileToCloud,
+} from "@/lib/cloud-sync";
 import { getProfile, createOrUpdateProfile } from "@/lib/profile";
 import { useChainTheme, CHAIN_ACCENT } from "@/lib/theme";
 
@@ -30,13 +34,24 @@ export function ProfileSetup() {
     }
   }, [isConnected, address]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!address) return;
     createOrUpdateProfile(address, {
       displayName: displayName.trim() || undefined,
       email: email.trim() || undefined,
       emailRemindersOptIn: emailReminders,
     });
+    try {
+      if (isCloudSyncConfigured()) {
+        await pushProfileToCloud(address, {
+          displayName: displayName.trim() || undefined,
+          email: email.trim() || undefined,
+          emailRemindersOptIn: emailReminders,
+        });
+      }
+    } catch {
+      /* keep local save; user can retry from Profile */
+    }
     setSaved(true);
     setTimeout(() => {
       setShow(false);

@@ -8,6 +8,11 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 
+import {
+  deleteProfileFromCloud,
+  isCloudSyncConfigured,
+  pushProfileToCloud,
+} from "@/lib/cloud-sync";
 import { getProfile, createOrUpdateProfile, clearProfile } from "@/lib/profile";
 
 export default function ProfilePage() {
@@ -16,6 +21,9 @@ export default function ProfilePage() {
   const [email, setEmail] = useState("");
   const [emailReminders, setEmailReminders] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [showClearModal, setShowClearModal] = useState(false);
 
   useEffect(() => {
     if (!address) return;
@@ -27,23 +35,54 @@ export default function ProfilePage() {
     }
   }, [address]);
 
-  const onSave = () => {
+  const onSave = async () => {
     if (!address) return;
-    createOrUpdateProfile(address, {
-      displayName: displayName.trim() || undefined,
-      email: email.trim() || undefined,
-      emailRemindersOptIn: emailReminders,
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setError(null);
+    setBusy(true);
+    try {
+      createOrUpdateProfile(address, {
+        displayName: displayName.trim() || undefined,
+        email: email.trim() || undefined,
+        emailRemindersOptIn: emailReminders,
+      });
+      if (isCloudSyncConfigured()) {
+        await pushProfileToCloud(address, {
+          displayName: displayName.trim() || undefined,
+          email: email.trim() || undefined,
+          emailRemindersOptIn: emailReminders,
+        });
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save profile");
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const onClear = () => {
+  const onClear = async () => {
     if (!address) return;
-    clearProfile(address);
-    setDisplayName("");
-    setEmail("");
-    setEmailReminders(false);
+    setError(null);
+    setBusy(true);
+    try {
+      if (isCloudSyncConfigured()) {
+        await deleteProfileFromCloud(address);
+      }
+      clearProfile(address);
+      setDisplayName("");
+      setEmail("");
+      setEmailReminders(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not clear profile");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onConfirmClear = async () => {
+    await onClear();
+    setShowClearModal(false);
   };
 
   return (
@@ -54,6 +93,11 @@ export default function ProfilePage() {
       </h1>
       <p className="mt-2 text-body text-brand-ink">
         Manage your display name, email, and notification preferences.
+        {isCloudSyncConfigured() && (
+          <span className="mt-1 block font-mono text-xs text-brand-muted">
+            Saving to cloud asks for a wallet signature (no gas).
+          </span>
+        )}
       </p>
 
       {!isConnected && (
@@ -66,8 +110,9 @@ export default function ProfilePage() {
         <Card className="relative mt-6 p-6">
           <button
             type="button"
-            onClick={onClear}
-            className="absolute right-4 top-4 font-mono text-xs font-extrabold uppercase tracking-widest text-brand-muted underline hover:text-brand-red"
+            onClick={() => setShowClearModal(true)}
+            disabled={busy}
+            className="absolute right-4 top-4 font-mono text-xs font-extrabold uppercase tracking-widest text-brand-muted underline hover:text-brand-red disabled:opacity-50"
           >
             clear
           </button>
@@ -112,17 +157,50 @@ export default function ProfilePage() {
               </span>
             </div>
 
+            {error && (
+              <div className="border-2 border-brand-red bg-white p-2 font-mono text-xs text-brand-red">
+                {error}
+              </div>
+            )}
+
             {saved && (
               <div className="border-2 border-brand-green bg-white p-2 font-mono text-xs text-brand-green">
                 Profile saved successfully.
               </div>
             )}
 
-            <Button variant="black" size="md" onClick={onSave}>
-              Save Profile →
+            <Button className="w-full" variant="black" size="md" onClick={() => void onSave()} disabled={busy}>
+              {busy ? "Saving…" : "Save Profile →"}
             </Button>
           </div>
         </Card>
+      )}
+      {showClearModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md border-2 border-brand-black bg-[#f5f5f2] p-5 shadow-[6px_6px_0_#0A0A0A]">
+            <h2 className="font-grotesk text-lg font-bold uppercase text-brand-black">
+              Clear local data?
+            </h2>
+            <p className="mt-3 text-body text-brand-ink">
+              This will reset your profile settings.
+              <br />
+              Your splits and friends are safely stored and will not be affected.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                variant="white"
+                size="sm"
+                onClick={() => setShowClearModal(false)}
+                disabled={busy}
+              >
+                Cancel
+              </Button>
+              <Button variant="red" size="sm" onClick={() => void onConfirmClear()} disabled={busy}>
+                Clear
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </LayoutShell>
   );
