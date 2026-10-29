@@ -12,12 +12,11 @@ import { Badge } from "@/components/ui/Badge";
 import { ModeToggle } from "@/components/ui/ModeToggle";
 import { TransactionModal } from "@/components/TransactionModal";
 
-import { getContract } from "@/lib/contract";
+import { CONTRACTS, getFairsplitV2Contract } from "@/lib/contract";
 import { walletClientToSigner } from "@/lib/wallet";
 import {
   getDefaultTokenForChain,
   getTokenByAddress,
-  CONTRACT_ADDRESSES,
   SUPPORTED_CHAINS,
 } from "@/lib/chains";
 import { getChainLabel } from "@/lib/explorer";
@@ -46,7 +45,7 @@ interface BillData {
 interface ParticipantStatus {
   paid: boolean;
   isConfidential: boolean;
-  paidAt: bigint;
+  paidAt?: bigint;
 }
 
 export default function BillDetailPage() {
@@ -66,14 +65,28 @@ export default function BillDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [fetching, setFetching] = useState(true);
+  const splitIdBigInt = (() => {
+    try {
+      return BigInt(billId);
+    } catch {
+      return null;
+    }
+  })();
 
   const fetchBill = useCallback(async () => {
     if (!billId) return;
+    if (splitIdBigInt == null) {
+      setFetchError("Invalid split id.");
+      setFetching(false);
+      return;
+    }
     setFetching(true);
     setFetchError(null);
     setBill(null);
     setBillChainId(null);
-    const chainIds = Object.keys(CONTRACT_ADDRESSES).map(Number);
+    const chainIds = [CONTRACTS.baseSepolia.chainId, CONTRACTS.base.chainId].filter(
+      (cid) => (cid === CONTRACTS.base.chainId ? Boolean(CONTRACTS.base.fairsplitV2) : Boolean(CONTRACTS.baseSepolia.fairsplitV2))
+    );
     const rpcByChainId: Record<number, string> = {};
     for (const c of Object.values(SUPPORTED_CHAINS)) {
       rpcByChainId[c.id] = c.rpc;
@@ -83,15 +96,21 @@ export default function BillDetailPage() {
       if (!rpcUrl) continue;
       try {
         const rpc = new ethers.JsonRpcProvider(rpcUrl);
-        const contract = getContract(rpc, cid);
-        const data = await contract.getBill(billId);
+        const contract = getFairsplitV2Contract(rpc, cid);
+        const data = await contract.getSplit(splitIdBigInt);
+        const participants = (await contract.getParticipants(splitIdBigInt)) as string[];
+        const totalAmount = data[1] as bigint;
+        const participantCount = Number(data[5] as bigint);
+        const amountPerParticipant =
+          participantCount > 0 ? totalAmount / BigInt(participantCount) : BigInt(0);
         const billData: BillData = {
           creator: data[0] as string,
-          usdcToken: data[1] as string,
-          name: data[2] as string,
-          description: data[3] as string,
-          amountPerParticipant: data[4] as bigint,
-          participants: data[5] as string[],
+          usdcToken:
+            cid === CONTRACTS.base.chainId ? CONTRACTS.base.usdc : CONTRACTS.baseSepolia.usdc,
+          name: `Split #${billId}`,
+          description: "",
+          amountPerParticipant,
+          participants,
         };
         setBill(billData);
         setBillChainId(cid);
@@ -108,17 +127,17 @@ export default function BillDetailPage() {
             });
           } else {
             try {
-              const s = await contract.getParticipantStatus(billId, p);
+              const s = await contract.getParticipantStatus(splitIdBigInt, p);
               statusMap.set(pLower, {
-                paid: s[0] as boolean,
-                isConfidential: s[1] as boolean,
-                paidAt: s[2] as bigint,
+                paid: Number(s[0]) === 1,
+                isConfidential: false,
+                paidAt: undefined,
               });
             } catch {
               statusMap.set(pLower, {
                 paid: false,
                 isConfidential: false,
-                paidAt: BigInt(0),
+                paidAt: undefined,
               });
             }
           }
@@ -128,7 +147,7 @@ export default function BillDetailPage() {
         return;
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        if (!/Bill does not exist/i.test(msg)) {
+        if (!/Split does not exist/i.test(msg)) {
           setFetchError(`Failed to load bill: ${msg}`);
           setFetching(false);
           return;
@@ -142,7 +161,7 @@ export default function BillDetailPage() {
         : "Bill not found. No supported chains are configured."
     );
     setFetching(false);
-  }, [billId]);
+  }, [billId, splitIdBigInt]);
 
   useEffect(() => {
     void fetchBill();
@@ -159,7 +178,15 @@ export default function BillDetailPage() {
   const alreadyPaid = myStatus?.paid ?? false;
 
   const onPay = async () => {
-    if (!isConnected || !walletClient || !address || !bill || billChainId == null || chainId !== billChainId) return;
+    if (
+      !isConnected ||
+      !walletClient ||
+      !address ||
+      !bill ||
+      billChainId == null ||
+      chainId !== billChainId ||
+      splitIdBigInt == null
+    ) return;
     setLoading(true);
     setError(null);
     setStage(null);
@@ -169,10 +196,17 @@ export default function BillDetailPage() {
 
       if (mode === "normal") {
         setStage("Approving token...");
-        await approveUsdc(bill.usdcToken, CONTRACT_ADDRESSES[billChainId], amountRaw, signer);
+        await approveUsdc(
+          bill.usdcToken,
+          billChainId === CONTRACTS.base.chainId
+            ? CONTRACTS.base.fairsplitV2
+            : CONTRACTS.baseSepolia.fairsplitV2,
+          amountRaw,
+          signer
+        );
         setStage("Paying bill...");
-        const contract = getContract(signer, billChainId);
-        const tx = await contract.payNormal(billId);
+        const contract = getFairsplitV2Contract(signer, billChainId);
+        const tx = await contract.paySplit(splitIdBigInt);
         setStage("Confirming...");
         await tx.wait();
         logActivity(address, "bill_paid_normal", `Paid "${bill.name}"`, `${ethers.formatUnits(amountRaw, tokenDecimals)} ${tokenSymbol}`, {
@@ -180,14 +214,18 @@ export default function BillDetailPage() {
           txHash: tx.hash as string,
           billId,
         });
-        markSplitRequestPaid({
-          chainId: billChainId,
-          billId,
-          participantAddress: address,
-          mode: "normal",
-          splitName: bill.name,
-          creatorAddress: bill.creator,
-        });
+        try {
+          await markSplitRequestPaid({
+            chainId: billChainId,
+            billId,
+            participantAddress: address,
+            mode: "normal",
+            splitName: bill.name,
+            creatorAddress: bill.creator,
+          });
+        } catch (syncErr) {
+          console.warn("[bill] mark paid cloud sync", syncErr);
+        }
         showSuccessToast("Payment confirmed", `Paid ${bill.name}`);
         setStatuses((prev) => {
           const next = new Map(prev);
@@ -216,14 +254,18 @@ export default function BillDetailPage() {
           txHash,
           billId,
         });
-        markSplitRequestPaid({
-          chainId: billChainId,
-          billId,
-          participantAddress: address,
-          mode: "confidential",
-          splitName: bill.name,
-          creatorAddress: bill.creator,
-        });
+        try {
+          await markSplitRequestPaid({
+            chainId: billChainId,
+            billId,
+            participantAddress: address,
+            mode: "confidential",
+            splitName: bill.name,
+            creatorAddress: bill.creator,
+          });
+        } catch (syncErr) {
+          console.warn("[bill] mark paid cloud sync", syncErr);
+        }
         markConfidentialPaid(billChainId, billId, address);
         showSuccessToast("Confidential payment submitted", `Paid ${bill.name}`);
         setStatuses((prev) => {
@@ -261,14 +303,16 @@ export default function BillDetailPage() {
       </h1>
 
       {fetchError && (
-        <Card className="mt-6 p-6">
+        <Card className="mt-6 max-w-2xl p-6">
           <p className="font-mono text-sm text-brand-red">{fetchError}</p>
         </Card>
       )}
 
       {bill && (
-        <div className="mt-6 grid gap-6 md:grid-cols-2">
-          <Card className="p-6">
+        <Card className="mt-6 max-w-2xl p-6">
+          <p className="label-text text-brand-muted">// Split Receipt</p>
+
+          <div className="mt-3">
             <p className="label-text text-brand-muted">// Bill Info</p>
             {billChainId != null && (
               <p className="mt-1 font-mono text-xs text-brand-muted">
@@ -285,9 +329,9 @@ export default function BillDetailPage() {
             <p className="mt-1 font-mono text-xs text-brand-muted">
               Creator: {bill.creator.slice(0, 8)}...{bill.creator.slice(-6)}
             </p>
-          </Card>
+          </div>
 
-          <Card className="p-6">
+          <div className="mt-6 border-t-2 border-brand-black pt-4">
             <p className="label-text text-brand-muted">// Participants</p>
             <div className="mt-3 space-y-2">
               {bill.participants.map((p) => {
@@ -306,8 +350,8 @@ export default function BillDetailPage() {
                 );
               })}
             </div>
-          </Card>
-        </div>
+          </div>
+        </Card>
       )}
 
       {bill && billChainId != null && !onCorrectChain && (
