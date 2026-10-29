@@ -35,3 +35,6 @@ coverage.json
 
 # TypeScript incremental build cache
 tsconfig.tsbuildinfo
+
+# Supabase CLI scratch
+supabase/.temp/
