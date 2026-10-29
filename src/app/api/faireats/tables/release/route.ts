@@ -69,7 +69,13 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ error: "Table not found" }, { status: 404 });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Could not free table";
-    return NextResponse.json({ error: message }, { status: 503 });
+    // Never surface the raw error: a cold Supabase connection throws
+    // "TypeError: fetch failed", which is meaningless to a diner. Log the
+    // real cause server-side; the client retries 5xx before showing this.
+    console.error("[faireats] release", e);
+    return NextResponse.json(
+      { error: "Could not free that table right now." },
+      { status: 503 },
+    );
   }
 }

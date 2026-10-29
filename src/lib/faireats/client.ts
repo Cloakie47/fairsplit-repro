@@ -5,14 +5,36 @@
  *
  * All FairEats data goes through these routes and never through a Supabase
  * client in the browser — the FairEats tables have RLS on with no policies, so
- * the anon key cannot reach them by design (see issue #2 for the existing
- * module that gets this wrong).
+ * the anon key cannot reach them by design (see issue #6).
+ *
+ * Reads retry. The first request after a cold start can fail while the server
+ * establishes its connection to Supabase: DNS alone has been measured at ~15s,
+ * which exceeds undici's 10s connect timeout and comes back as a 503. Without
+ * a retry a perfectly healthy storefront presents as dead and needs a manual
+ * reload, which is worse than it being slow. `onProgress` lets the UI say
+ * "connecting" instead of hanging silently or flashing an error.
  */
 
 import type { FairEatsTable, Merchant, MenuItem } from "./types";
 import { menuItemFromWire, type WireMenuItem } from "./wire";
 
-async function readError(res: Response, fallback: string): Promise<string> {
+const READ_ATTEMPTS = 4;
+const RETRY_DELAY_MS = 1200;
+
+/** Reports a retry so callers can render a connecting state. */
+export type ReadProgress = (state: {
+  attempt: number;
+  attempts: number;
+}) => void;
+
+export type ReadOptions = { onProgress?: ReadProgress };
+
+/** Thrown for responses that will never succeed on retry (4xx). */
+class PermanentError extends Error {}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function messageFrom(res: Response, fallback: string): Promise<string> {
   try {
     const body = (await res.json()) as { error?: string };
     return body.error || fallback;
@@ -21,28 +43,62 @@ async function readError(res: Response, fallback: string): Promise<string> {
   }
 }
 
-export async function fetchMerchants(): Promise<Merchant[]> {
-  const res = await fetch("/api/faireats/merchants", { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(await readError(res, "Could not load businesses"));
+/**
+ * GET with retry on transient failure. 4xx is returned immediately; 5xx and
+ * network errors are retried with a short fixed backoff.
+ */
+async function readJson<T>(
+  path: string,
+  fallback: string,
+  options?: ReadOptions,
+): Promise<T> {
+  let lastMessage = fallback;
+
+  for (let attempt = 1; attempt <= READ_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(path, { cache: "no-store" });
+      if (res.ok) return (await res.json()) as T;
+      if (res.status < 500) {
+        throw new PermanentError(await messageFrom(res, fallback));
+      }
+      lastMessage = await messageFrom(res, fallback);
+    } catch (e) {
+      if (e instanceof PermanentError) throw e;
+      // Network-level failure (server not up yet, connection reset).
+      lastMessage = fallback;
+    }
+
+    if (attempt < READ_ATTEMPTS) {
+      options?.onProgress?.({ attempt, attempts: READ_ATTEMPTS });
+      await sleep(RETRY_DELAY_MS * attempt);
+    }
   }
-  const body = (await res.json()) as { merchants: Merchant[] };
+
+  throw new Error(lastMessage);
+}
+
+export async function fetchMerchants(
+  options?: ReadOptions,
+): Promise<Merchant[]> {
+  const body = await readJson<{ merchants: Merchant[] }>(
+    "/api/faireats/merchants",
+    "Could not reach the kitchen. Check your connection and try again.",
+    options,
+  );
   return body.merchants;
 }
 
 export type Storefront = { merchant: Merchant; menu: MenuItem[] };
 
-export async function fetchStorefront(slug: string): Promise<Storefront> {
-  const res = await fetch(`/api/faireats/merchants/${encodeURIComponent(slug)}`, {
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    throw new Error(await readError(res, "Could not load this business"));
-  }
-  const body = (await res.json()) as {
-    merchant: Merchant;
-    menu: WireMenuItem[];
-  };
+export async function fetchStorefront(
+  slug: string,
+  options?: ReadOptions,
+): Promise<Storefront> {
+  const body = await readJson<{ merchant: Merchant; menu: WireMenuItem[] }>(
+    `/api/faireats/merchants/${encodeURIComponent(slug)}`,
+    "Could not load this business. Check your connection and try again.",
+    options,
+  );
   return { merchant: body.merchant, menu: body.menu.map(menuItemFromWire) };
 }
 
@@ -52,15 +108,15 @@ export type TablesResponse = {
   isOwner: boolean;
 };
 
-export async function fetchTables(slug: string): Promise<TablesResponse> {
-  const res = await fetch(
+export function fetchTables(
+  slug: string,
+  options?: ReadOptions,
+): Promise<TablesResponse> {
+  return readJson<TablesResponse>(
     `/api/faireats/tables?merchant=${encodeURIComponent(slug)}`,
-    { cache: "no-store" },
+    "Could not load the tables. Check your connection and try again.",
+    options,
   );
-  if (!res.ok) {
-    throw new Error(await readError(res, "Could not load tables"));
-  }
-  return (await res.json()) as TablesResponse;
 }
 
 export type TableMutationResult =
@@ -83,7 +139,7 @@ async function mutateTable(
   }
   return {
     ok: false,
-    error: await readError(res, "That did not work. Try again."),
+    error: await messageFrom(res, "That did not work. Try again."),
     // 409 means the world moved on (table taken, already free) rather than a
     // failure to retry — the caller should refresh the layout instead.
     conflict: res.status === 409,

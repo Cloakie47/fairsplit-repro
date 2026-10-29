@@ -20,6 +20,14 @@ const MINIAPP_HOME_URL = "https://fairsplit-repro.vercel.app";
 export const metadata: Metadata = {
   title: "FairSplit — Bill Splitting",
   description: "Split bills with on-chain settlement using USDC on Base",
+  // Declared here rather than as app/icon.svg: public/icon.svg already exists
+  // for the miniapp routes, and the two paths collide
+  // ("A conflicting public file and page file was found for path /icon.svg").
+  // Without this, every page logged a 404 for /favicon.ico.
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    shortcut: "/favicon.svg",
+  },
   other: {
     "base:app_id": "6979d24e2dbd4b464042adc0",
   },

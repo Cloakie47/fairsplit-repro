@@ -50,7 +50,13 @@ export async function GET(request: Request) {
         viewerAddress === merchant.ownerAddress.toLowerCase(),
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Could not load tables";
-    return NextResponse.json({ error: message }, { status: 503 });
+    // Never surface the raw error: a cold Supabase connection throws
+    // "TypeError: fetch failed", which is meaningless to a diner. Log the
+    // real cause server-side; the client retries 5xx before showing this.
+    console.error("[faireats] tables", e);
+    return NextResponse.json(
+      { error: "Could not load the tables right now." },
+      { status: 503 },
+    );
   }
 }

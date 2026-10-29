@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="FairSplit">
+  <rect width="32" height="32" fill="#D4F5A2"/>
+  <rect x="1.5" y="1.5" width="29" height="29" fill="none" stroke="#0A0A0A" stroke-width="3"/>
+  <rect x="24" y="1.5" width="6.5" height="6.5" fill="#E8000D" stroke="#0A0A0A" stroke-width="3"/>
+  <path d="M10 25 V8 h11 v4.2 h-6.6 v2.6 h5.6 v4.2 h-5.6 V25 Z" fill="#0A0A0A"/>
+</svg>

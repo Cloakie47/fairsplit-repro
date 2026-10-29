@@ -7,6 +7,10 @@
 --
 -- Prices are micro-USDC (1 USDC = 1000000).
 --
+-- Image paths point at raster photos; the storefront falls back to the
+-- placeholder SVG of the same basename when the file is absent, so a fresh
+-- install renders fine before any photo is added.
+--
 -- owner_address / payout_address are set to the project's deploy wallet, which
 -- is also the FairsplitV2 fee recipient on Base Sepolia. Change them to point
 -- the storefront at a different merchant wallet.
@@ -29,7 +33,7 @@ BEGIN
      confidential_ready, is_open, created_at_ms)
   VALUES
     ('mcfair', 'McFair', 'Burgers, fries and cold cola. Pay in USDC.',
-     '/faireats/mcfair/logo.svg', '/faireats/mcfair/cover.svg',
+     '/faireats/mcfair/logo.svg', '/faireats/mcfair/cover.jpg',
      v_owner, v_owner, false, true, v_now)
   RETURNING id INTO v_merchant;
 
@@ -46,7 +50,7 @@ BEGIN
     (merchant_id, name, description, category, base_price_usdc_micro, image_path, sort_order)
   VALUES
     (v_merchant, 'Burger', 'Flame-grilled patty, lettuce, tomato, house sauce.',
-     'main', 6500000, '/faireats/mcfair/burger.svg', 1)
+     'main', 6500000, '/faireats/mcfair/burger.jpg', 1)
   RETURNING id INTO v_item;
 
   INSERT INTO public.faireats_option_groups
@@ -83,7 +87,7 @@ BEGIN
     (merchant_id, name, description, category, base_price_usdc_micro, image_path, sort_order)
   VALUES
     (v_merchant, 'Fries', 'Skin-on, salted, fried twice.',
-     'side', 2500000, '/faireats/mcfair/fries.svg', 2)
+     'side', 2500000, '/faireats/mcfair/fries.jpg', 2)
   RETURNING id INTO v_item;
 
   INSERT INTO public.faireats_option_groups
@@ -118,7 +122,7 @@ BEGIN
     (merchant_id, name, description, category, base_price_usdc_micro, image_path, sort_order)
   VALUES
     (v_merchant, 'Cola', 'Served cold, over ice.',
-     'drink', 1800000, '/faireats/mcfair/cola.svg', 3)
+     'drink', 1800000, '/faireats/mcfair/cola.jpg', 3)
   RETURNING id INTO v_item;
 
   INSERT INTO public.faireats_option_groups

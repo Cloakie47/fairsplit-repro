@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
 import { LayoutShell } from "@/components/LayoutShell";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { fetchMerchants } from "@/lib/faireats/client";
 import { FAIREATS_CHAIN_NAME } from "@/lib/faireats/config";
 import type { Merchant } from "@/lib/faireats/types";
@@ -13,23 +14,29 @@ import type { Merchant } from "@/lib/faireats/types";
 export default function BusinessesPage() {
   const [merchants, setMerchants] = useState<Merchant[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState<{
+    attempt: number;
+    attempts: number;
+  } | null>(null);
+
+  const load = useCallback(async () => {
+    setError(null);
+    try {
+      const list = await fetchMerchants({
+        onProgress: ({ attempt, attempts }) =>
+          setConnecting({ attempt, attempts }),
+      });
+      setMerchants(list);
+      setConnecting(null);
+    } catch (e) {
+      setConnecting(null);
+      setError(e instanceof Error ? e.message : "Could not load businesses");
+    }
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const list = await fetchMerchants();
-        if (!cancelled) setMerchants(list);
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Could not load businesses");
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    void load();
+  }, [load]);
 
   return (
     <LayoutShell>
@@ -43,9 +50,26 @@ export default function BusinessesPage() {
       </p>
 
       {error && (
-        <div className="mt-6 border-2 border-brand-black bg-brand-red px-4 py-3 shadow-brutal">
-          <p className="label-text text-white">// Could not load</p>
-          <p className="mt-1 font-grotesk text-body text-white">{error}</p>
+        <div className="mt-6 border-2 border-brand-black bg-brand-cream px-5 py-4 shadow-brutal">
+          <p className="label-text text-brand-red">// Could not load</p>
+          <p className="mt-2 font-grotesk text-body text-brand-ink">{error}</p>
+          <Button
+            variant="yellow"
+            size="md"
+            className="mt-4"
+            onClick={() => void load()}
+          >
+            Try again
+          </Button>
+        </div>
+      )}
+
+      {connecting && !merchants && (
+        <div className="mt-6 inline-flex items-center gap-2 border-2 border-brand-black bg-brand-yellow px-4 py-2 shadow-brutal">
+          <span className="inline-block h-2.5 w-2.5 animate-pulse bg-brand-black" />
+          <p className="font-grotesk text-xs font-bold uppercase tracking-wide text-brand-black">
+            Connecting… attempt {connecting.attempt + 1} of {connecting.attempts}
+          </p>
         </div>
       )}
 

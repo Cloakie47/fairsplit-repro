@@ -10,9 +10,15 @@ export async function GET() {
     const merchants = await listMerchants();
     return NextResponse.json({ merchants });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Could not load merchants";
-    // Supabase unconfigured or unreachable: report it rather than returning an
-    // empty list, which would render as "no businesses" and hide the outage.
-    return NextResponse.json({ error: message }, { status: 503 });
+    // Report the outage rather than returning an empty list, which would
+    // render as "no businesses" and hide the problem. But never surface the
+    // raw error: a cold Supabase connection throws "TypeError: fetch failed",
+    // which means nothing to a diner. The client retries 5xx before showing
+    // this message.
+    console.error("[faireats] merchants", e);
+    return NextResponse.json(
+      { error: "Could not load businesses right now." },
+      { status: 503 },
+    );
   }
 }
