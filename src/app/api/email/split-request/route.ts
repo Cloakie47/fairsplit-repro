@@ -5,6 +5,7 @@ type Recipient = {
   email: string;
   walletAddress: string;
   displayName?: string;
+  creatorCopy?: boolean;
 };
 
 type Payload = {
@@ -29,8 +30,11 @@ function escapeHtml(input: string): string {
 }
 
 function getTransport() {
-  const user = process.env.GMAIL_USER;
-  const pass = process.env.GMAIL_APP_PASSWORD;
+  const user = (process.env.GMAIL_USER ?? "").trim().replace(/^["']|["']$/g, "");
+  const pass = (process.env.GMAIL_APP_PASSWORD ?? "")
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .replace(/\s+/g, "");
   if (!user || !pass) {
     throw new Error("Email is not configured. Set GMAIL_USER and GMAIL_APP_PASSWORD.");
   }
@@ -55,7 +59,17 @@ export async function POST(req: NextRequest) {
     }
 
     const transport = getTransport();
-    const fromAddress = process.env.GMAIL_USER as string;
+    try {
+      await transport.verify();
+    } catch (verifyError) {
+      const reason =
+        verifyError instanceof Error ? verifyError.message : "SMTP verification failed.";
+      return NextResponse.json(
+        { ok: false, error: `SMTP verification failed: ${reason}` },
+        { status: 500 }
+      );
+    }
+    const fromAddress = (process.env.GMAIL_USER ?? "").trim().replace(/^["']|["']$/g, "");
     const appUrl = payload.appUrl || "http://localhost:3000";
     const creatorLabel =
       payload.creatorDisplayName?.trim() ||
@@ -63,15 +77,40 @@ export async function POST(req: NextRequest) {
 
     let sent = 0;
     let failed = 0;
+    const errors: Array<{ email: string; reason: string }> = [];
 
     for (const recipient of recipients) {
       const toLabel =
         recipient.displayName?.trim() ||
         `${recipient.walletAddress.slice(0, 6)}...${recipient.walletAddress.slice(-4)}`;
-      const subject = `FairSplit: New split request - ${payload.splitName}`;
+      const subject = recipient.creatorCopy
+        ? `FairSplit: Split created - ${payload.splitName}`
+        : `FairSplit: New split request - ${payload.splitName}`;
       const reminder = payload.customReminder?.trim();
       const tokenSymbol = payload.tokenSymbol?.trim() || "USDC";
-      const body = `
+      const body = recipient.creatorCopy
+        ? `
+        <div style="font-family:Arial,sans-serif;line-height:1.5;color:#111;">
+          <h2 style="margin:0 0 12px;">FairSplit Split Created</h2>
+          <p>Hi ${escapeHtml(toLabel)},</p>
+          <p>Your split was created successfully:</p>
+          <p style="margin:10px 0;padding:12px;background:#f5f5f5;border-radius:8px;">
+            <strong>Split:</strong> ${escapeHtml(payload.splitName)}<br/>
+            <strong>Total amount:</strong> ${escapeHtml(payload.amountUsdc)} ${escapeHtml(tokenSymbol)}
+          </p>
+          ${
+            reminder
+              ? `<p><strong>Note:</strong> ${escapeHtml(reminder)}</p>`
+              : ""
+          }
+          <p>
+            Open FairSplit:
+            <a href="${escapeHtml(appUrl)}" style="color:#0a58ca;">${escapeHtml(appUrl)}</a>
+          </p>
+          <p style="font-size:12px;color:#666;">This message was sent by FairSplit.</p>
+        </div>
+      `
+        : `
         <div style="font-family:Arial,sans-serif;line-height:1.5;color:#111;">
           <h2 style="margin:0 0 12px;">FairSplit Payment Request</h2>
           <p>Hi ${escapeHtml(toLabel)},</p>
@@ -101,12 +140,20 @@ export async function POST(req: NextRequest) {
           html: body,
         });
         sent += 1;
-      } catch {
+      } catch (sendError) {
         failed += 1;
+        const reason =
+          sendError instanceof Error ? sendError.message : "Unknown sendMail error";
+        errors.push({ email: recipient.email, reason });
       }
     }
 
-    return NextResponse.json({ ok: true, sent, failed });
+    return NextResponse.json({
+      ok: true,
+      sent,
+      failed,
+      errors: errors.slice(0, 3),
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to send split emails.";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
