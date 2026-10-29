@@ -71,6 +71,9 @@ export function addNotification(
     ...input,
   };
   setAll([next, ...getAll()]);
+  void import("@/lib/cloud-sync").then((m) => {
+    if (m.isCloudSyncConfigured()) m.schedulePushNotifications(userAddress);
+  });
   return next;
 }
 
@@ -80,9 +83,27 @@ export function markAllNotificationsRead(userAddress: string): void {
     n.userAddress === user ? { ...n, isRead: true } : n
   );
   setAll(updated);
+  void import("@/lib/cloud-sync").then((m) => {
+    if (m.isCloudSyncConfigured()) m.schedulePushNotifications(userAddress);
+  });
 }
 
 export function getUnreadCount(userAddress: string): number {
   return getNotificationsForUser(userAddress).filter((n) => !n.isRead).length;
+}
+
+/** Upsert by id (e.g. after server sync). */
+export function mergeNotificationItems(incoming: NotificationItem[]): void {
+  if (incoming.length === 0) return;
+  const map = new Map<string, NotificationItem>();
+  for (const n of getAll()) {
+    map.set(n.id, n);
+  }
+  for (const n of incoming) {
+    map.set(n.id, n);
+  }
+  setAll(
+    Array.from(map.values()).sort((a, b) => b.createdAt - a.createdAt)
+  );
 }
 

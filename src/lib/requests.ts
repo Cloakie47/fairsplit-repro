@@ -1,6 +1,6 @@
 "use client";
 
-import { addNotification } from "@/lib/notifications";
+import { addNotification, mergeNotificationItems } from "@/lib/notifications";
 import { getProfile } from "@/lib/profile";
 
 export type SplitRequestStatus =
@@ -22,6 +22,15 @@ export type SplitRequest = {
   status: SplitRequestStatus;
   createdAt: number;
   paidAt?: number;
+};
+
+export type MarkSplitRequestPaidParams = {
+  chainId: number;
+  billId: string;
+  participantAddress: string;
+  mode: "normal" | "confidential";
+  splitName: string;
+  creatorAddress: string;
 };
 
 const STORAGE_KEY = "fairysplit_split_requests";
@@ -59,22 +68,21 @@ export function getOutgoingRequests(userAddress: string): SplitRequest[] {
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
-export function createSplitRequests(params: {
-  chainId: number;
-  billId: string;
-  splitName: string;
-  creatorAddress: string;
-  participants: string[];
-  amountUsdc: string;
-  tokenAddress?: string;
-  tokenSymbol?: string;
-  customReminder?: string;
-}): void {
-  const creator = normalize(params.creatorAddress);
-  const existing = getAll();
-  const now = Date.now();
-
-  const next = params.participants
+function buildNextRequests(
+  params: {
+    chainId: number;
+    billId: string;
+    splitName: string;
+    creatorAddress: string;
+    participants: string[];
+    amountUsdc: string;
+    tokenAddress?: string;
+    tokenSymbol?: string;
+  },
+  creator: string,
+  now: number
+): SplitRequest[] {
+  return params.participants
     .map((addr) => normalize(addr))
     .filter((addr) => addr !== creator)
     .map((participant) => {
@@ -94,7 +102,10 @@ export function createSplitRequests(params: {
         createdAt: now,
       };
     });
+}
 
+function mergeRequestsIntoStorage(next: SplitRequest[]): void {
+  const existing = getAll();
   const deduped = existing.filter(
     (item) =>
       !next.some(
@@ -104,10 +115,17 @@ export function createSplitRequests(params: {
           incoming.participantAddress === item.participantAddress
       )
   );
-
   setAll([...next, ...deduped]);
+}
 
-  for (const req of next) {
+function addLocalSplitNotifications(params: {
+  chainId: number;
+  billId: string;
+  splitName: string;
+  customReminder?: string;
+  next: SplitRequest[];
+}): void {
+  for (const req of params.next) {
     addNotification(req.participantAddress, {
       type: "split_created",
       title: "New split request",
@@ -131,18 +149,68 @@ export function createSplitRequests(params: {
   }
 }
 
-export function markSplitRequestPaid(params: {
+export async function createSplitRequests(params: {
   chainId: number;
   billId: string;
-  participantAddress: string;
-  mode: "normal" | "confidential";
   splitName: string;
   creatorAddress: string;
-}): void {
-  const participant = normalize(params.participantAddress);
+  participants: string[];
+  amountUsdc: string;
+  tokenAddress?: string;
+  tokenSymbol?: string;
+  customReminder?: string;
+}): Promise<void> {
   const creator = normalize(params.creatorAddress);
   const now = Date.now();
 
+  let next: SplitRequest[] = buildNextRequests(params, creator, now);
+  let serverNotifications: import("@/lib/notifications").NotificationItem[] | null =
+    null;
+
+  const { isCloudSyncConfigured, remoteCreateSplitRequests } = await import(
+    "@/lib/cloud-sync"
+  );
+
+  if (isCloudSyncConfigured()) {
+    try {
+      const out = await remoteCreateSplitRequests(params);
+      next = out.requests;
+      serverNotifications = out.notifications;
+    } catch (e) {
+      console.warn(
+        "[requests] Supabase create split failed, using local only",
+        e
+      );
+      next = buildNextRequests(params, creator, now);
+    }
+  }
+
+  mergeRequestsIntoStorage(next);
+
+  if (serverNotifications?.length) {
+    mergeNotificationItems(serverNotifications);
+  } else {
+    addLocalSplitNotifications({
+      chainId: params.chainId,
+      billId: params.billId,
+      splitName: params.splitName,
+      customReminder: params.customReminder,
+      next,
+    });
+  }
+
+  void import("@/lib/cloud-sync").then((m) => {
+    if (!m.isCloudSyncConfigured()) return;
+    m.schedulePushSplitRequests(params.creatorAddress);
+    for (const p of params.participants) {
+      m.schedulePushSplitRequests(normalize(p));
+    }
+  });
+}
+
+function applyMarkPaidLocalOnly(params: MarkSplitRequestPaidParams): void {
+  const participant = normalize(params.participantAddress);
+  const now = Date.now();
   const nextStatus: SplitRequestStatus =
     params.mode === "normal" ? "paid_normal" : "paid_confidential";
 
@@ -160,7 +228,14 @@ export function markSplitRequestPaid(params: {
     };
   });
   setAll(updated);
+}
 
+function applyMarkPaidWithCreatorNotification(
+  params: MarkSplitRequestPaidParams
+): void {
+  applyMarkPaidLocalOnly(params);
+  const participant = normalize(params.participantAddress);
+  const creator = normalize(params.creatorAddress);
   addNotification(creator, {
     type:
       params.mode === "normal"
@@ -179,3 +254,44 @@ export function markSplitRequestPaid(params: {
   });
 }
 
+export async function markSplitRequestPaid(
+  params: MarkSplitRequestPaidParams
+): Promise<void> {
+  const { isCloudSyncConfigured, remoteMarkSplitRequestPaid } = await import(
+    "@/lib/cloud-sync"
+  );
+
+  if (isCloudSyncConfigured()) {
+    try {
+      const out = await remoteMarkSplitRequestPaid(params);
+      if (out.request) {
+        const byId = new Map(getAll().map((r) => [r.id, r]));
+        byId.set(out.request.id, out.request);
+        setAll(Array.from(byId.values()));
+      } else {
+        applyMarkPaidLocalOnly(params);
+      }
+      if (out.notification) {
+        mergeNotificationItems([out.notification]);
+      }
+      void import("@/lib/cloud-sync").then((m) => {
+        if (!m.isCloudSyncConfigured()) return;
+        m.schedulePushSplitRequests(params.participantAddress);
+        m.schedulePushSplitRequests(params.creatorAddress);
+      });
+      return;
+    } catch (e) {
+      console.warn(
+        "[requests] Supabase mark-paid failed, applying local only",
+        e
+      );
+    }
+  }
+
+  applyMarkPaidWithCreatorNotification(params);
+  void import("@/lib/cloud-sync").then((m) => {
+    if (!m.isCloudSyncConfigured()) return;
+    m.schedulePushSplitRequests(params.participantAddress);
+    m.schedulePushSplitRequests(params.creatorAddress);
+  });
+}

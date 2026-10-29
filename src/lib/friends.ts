@@ -60,6 +60,9 @@ export function upsertFriend(
   );
   const updated = [next, ...rest];
   setAllFriends(updated);
+  void import("@/lib/cloud-sync").then((m) => {
+    if (m.isCloudSyncConfigured()) m.schedulePushFriends(ownerAddress);
+  });
   return next;
 }
 
@@ -70,6 +73,9 @@ export function removeFriend(ownerAddress: string, friendAddress: string): void 
     (item) => !(item.ownerAddress === owner && item.friendAddress === friend)
   );
   setAllFriends(next);
+  void import("@/lib/cloud-sync").then((m) => {
+    if (m.isCloudSyncConfigured()) m.schedulePushFriends(ownerAddress);
+  });
 }
 
 export function getFriendByAddress(

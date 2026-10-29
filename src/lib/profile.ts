@@ -1,9 +1,5 @@
 /**
- * Lightweight user profile — stored off-chain.
- * Created on first wallet connect. Optional displayName and email.
- *
- * Storage: localStorage (demo). For production, use Supabase, Firebase, or IPFS.
- * See docs/ARCHITECTURE.md for storage options.
+ * User profile — localStorage mirror + optional Supabase via signed API (`/api/profile`, cloud-sync).
  */
 
 export type Profile = {

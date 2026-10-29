@@ -67,5 +67,8 @@ export function logActivity(
   };
   const existing = getActivity(address);
   window.localStorage.setItem(getStorageKey(address), JSON.stringify([next, ...existing]));
+  void import("@/lib/cloud-sync").then((m) => {
+    if (m.isCloudSyncConfigured()) m.schedulePushActivity(address);
+  });
 }
 
